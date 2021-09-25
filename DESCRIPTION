@@ -8,6 +8,7 @@ Authors@R: c(person("Lilit", "Nersisyan", email = "txgt.lilit.nersisyan@gmail.co
 Description: Calculates activity of KEGG signaling pathways based on expression fold change values and interaction types.
 License: file LICENSE
 LazyData: true
+biocViews:
 Imports: 
         KEGGREST, 
         graph, 
