@@ -3,12 +3,24 @@ Type: Package
 Title:  Pathway Signal Flow Calculator
 Version: 0.1
 Date: 2021-09-25
-Authors@R: Who wrote it
-Maintainer: Who to complain to <yourfault@somewhere.net>
+Authors@R: c(person("Lilit", "Nersisyan", email = "txgt.lilit.nersisyan@gmail.com", role = c("aut")), 
+             person("Siras", "Hakobyan", email = "sirashakobyan@gmail.com", role = c("aut", "cre")))
 Description: Calculates activity of KEGG signaling pathways based on expression fold change values and interaction types.
 License: file LICENSE
 LazyData: true
-Imports: KEGGREST, graph, Rgraphviz, XML, biomaRt
+Imports: 
+        KEGGREST, 
+        graph, 
+        Rgraphviz, 
+        XML, 
+        biomaRt
+Depends:
+    R (>= 3.5)
+Suggests:
+    knitr, 
+    shiny,
+    testthat,
+    rmarkdown
 Collate: 'hello.R' 'kegg.functions.R' 'pathnet.functions.R'
         'psf.functions.R' 'psf.opossom.R' 'psf.structures.node-class.R'
         'psf.structures.edge-class.R'
@@ -21,4 +33,3 @@ VignetteBuilder: knitr
 RoxygenNote: 7.1.1
 Roxygen: list(markdown = TRUE)
 Encoding: UTF-8
-Packaged: 2016-12-06 13:36:12 UTC; Lilit Nersisyan
