@@ -4,7 +4,7 @@ perform.psf <- function(env, entrez.fc = NULL,kegg.collection=NULL, calculate.si
     stop("null env argument")
   if(is.null(kegg.collection)){
     cat("Loading kegg collection\n")
-    kegg.collection.dir = "data/kegg.collection.Rdata"
+    kegg.collection.dir = "inst/extdata/kegg.collection.RData"
     cat("Trying ", kegg.collection.dir, "\n")
     load(kegg.collection.dir)
     if(is.null(kegg.collection))
@@ -29,7 +29,7 @@ perform.psf <- function(env, entrez.fc = NULL,kegg.collection=NULL, calculate.si
   psf.results = psf.from.env.entrez.fc(entrez.fc, kegg.collection, split)
   if(calculate.significance){
     cat("\nPerforming bootstrap calculations with", bst.steps, " steps\n")
-    psf.results.sig = bootstrap.significance(psf.results, entrez.fc, bst.steps, split)
+    psf.results.sig = bootstrap.significance(psf.results, entrez.fc, bst.steps)
   }
   psf.resulsts.processed = process.psf.results(psf.results.sig)
   cat("PSF calculations finished!\n")

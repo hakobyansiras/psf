@@ -1,4 +1,4 @@
-psf.signal.sheets <- function(psf.results)
+psf.signal.sheets <- function(psf.results, kegg.collection)
 {
 
   plot.psf.pathway <- function( psf.object, signal.values, signal.values.lim, main="",

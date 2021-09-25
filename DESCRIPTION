@@ -13,20 +13,22 @@ Imports:
         graph, 
         Rgraphviz, 
         XML, 
-        biomaRt
+        biomaRt,
+        igraph,
+        methods
 Depends:
     R (>= 3.5)
-Suggests:
-    knitr, 
-    shiny,
-    testthat,
-    rmarkdown
-Collate: 'hello.R' 'kegg.functions.R' 'pathnet.functions.R'
+Collate: 'kegg.functions.R' 'pathnet.functions.R'
         'psf.functions.R' 'psf.opossom.R' 'psf.structures.node-class.R'
         'psf.structures.edge-class.R'
         'psf.structures.node-getValue-method.R' 'scriptlog.R'
         'psf.report.sheets.R' 'plot.pathway.henry.R'
         'psf.graph.functions.R'
+Suggests:
+    knitr, 
+    shiny,
+    testthat,
+    rmarkdown
 NeedsCompilation: no
 URL: https://github.com/hakobyansiras/PSFC
 VignetteBuilder: knitr

@@ -171,7 +171,7 @@ parse.KGML <- function(kgml){
     entry1 = as.character(XML::xmlGetAttr(relation, "entry1"))
     entry2 = as.character(XML::xmlGetAttr(relation, "entry2"))
     type = as.character(XML::xmlGetAttr(relation, "type"))
-    g = psf::add.kegg.edge(entry1, entry2, type, subtype="n/a", edge.attrs, g)
+    g = add.kegg.edge(entry1, entry2, type, subtype="n/a", edge.attrs, g)
     relation.children = XML::xmlChildren(relation)
     subtypes = relation.children[which(names(relation.children) == "subtype")]
     if(length(subtypes) >= 1){
@@ -210,7 +210,7 @@ parse.KGML <- function(kgml){
       substrate.id = XML::xmlGetAttr(substrate, "id")
       entry1 = substrate.id
       entry2 = reaction.id
-      g = psf::add.kegg.edge(entry1, entry2, "ECrel", "reaction", edge.attrs, g)
+      g = add.kegg.edge(entry1, entry2, "ECrel", "reaction", edge.attrs, g)
     }
 
     ### edge for enzyme - product
@@ -221,7 +221,7 @@ parse.KGML <- function(kgml){
       product.id = XML::xmlGetAttr(product, "id")
       entry1 = reaction.id
       entry2 = product.id
-      g = psf::add.kegg.edge(entry1, entry2, "ECrel", "reaction", edge.attrs, g)
+      g = add.kegg.edge(entry1, entry2, "ECrel", "reaction", edge.attrs, g)
     }
   }
 
@@ -427,7 +427,7 @@ process.groupNode <- function(groupNode, components, g, edge.attrs){
           if(componentNode %in% graph::edges(g)[[incomingNode]]) {
             g = redirectEdge(incomingNode, componentNode, incomingNode, inNode, g, edge.attrs)
           }
-        g = psf::add.kegg.edge(prevNode, componentNode,type="ECrel", subtype="compound", edge.attrs, g)
+        g = add.kegg.edge(prevNode, componentNode,type="ECrel", subtype="compound", edge.attrs, g)
         prevNode = componentNode
       }
 
@@ -442,7 +442,7 @@ process.groupNode <- function(groupNode, components, g, edge.attrs){
 
   while(length(components) > 0) {
     if(!is.null(prevNode))
-      g = psf::add.kegg.edge(prevNode, components[1],"ECrel", "compound", edge.attrs, g)
+      g = add.kegg.edge(prevNode, components[1],"ECrel", "compound", edge.attrs, g)
     prevNode = components[1]
     components = components[-1]
   }
@@ -459,10 +459,10 @@ process.groupNode <- function(groupNode, components, g, edge.attrs){
             g = redirectEdge(componentNode, outgoingNode, outNode, outgoingNode, g, edge.attrs)
           }
         if (!is.null(prevNode))
-          g = psf::add.kegg.edge(prevNode, componentNode, "ECrel","compound", edge.attrs, g)
+          g = add.kegg.edge(prevNode, componentNode, "ECrel","compound", edge.attrs, g)
         prevNode = componentNode
       }
-    g = psf::add.kegg.edge(prevNode, outNode, "ECrel","compound", edge.attrs, g)
+    g = add.kegg.edge(prevNode, outNode, "ECrel","compound", edge.attrs, g)
   } else
     outNode = prevNode;
 
@@ -499,13 +499,13 @@ process.groupNode <- function(groupNode, components, g, edge.attrs){
 #' @param g The graph of class graphNEL
 #'
 #' @return g The modified graph with added (or not) edge
-# addEdgeSafe <- function(sourceNode, targetNode, g) {
-#   if(!(targetNode %in% graph::edges(g)[[sourceNode]]))
-#     # if (!(sourceNode %in% graph::edges(g)[[targetNode]])) {
-#     g = graph::addEdge(sourceNode, targetNode, g)
-#   # }
-#   return(g)
-# }
+addEdgeSafe <- function(sourceNode, targetNode, g) {
+  if(!(targetNode %in% graph::edges(g)[[sourceNode]]))
+    if (!(sourceNode %in% graph::edges(g)[[targetNode]])) {
+    g = graph::addEdge(sourceNode, targetNode, g)
+  }
+  return(g)
+}
 
 
 #' Redirect the edge to new source and target nodes
@@ -526,7 +526,7 @@ redirectEdge <- function(prevSource, prevTarget,newSource, newTarget, g, edge.at
     }
 
     g = graph::removeEdge(prevSource, prevTarget, g)
-    g = psf::add.kegg.edge(newSource, newTarget, prev.edge.attrs$type, prev.edge.attrs$subtype1, edge.attrs, g)
+    g = add.kegg.edge(newSource, newTarget, prev.edge.attrs$type, prev.edge.attrs$subtype1, edge.attrs, g)
     if(newTarget %in% graph::edges(g)[[newSource]])
       for(attr in edge.attrs){
         graph::edgeData(g, newSource, newTarget, attr) = prev.edge.attrs[[attr]]
@@ -537,8 +537,8 @@ redirectEdge <- function(prevSource, prevTarget,newSource, newTarget, g, edge.at
 }
 
 change.edge.type <- function(from, to, subtype, g) {
-  g = psf::remove.edge(from, to, g)
-  g = psf::add.kegg.edge.mut(from, to, subtype, g)
+  g = remove.edge(from, to, g)
+  g = add.kegg.edge.mut(from, to, subtype, g)
   return(g)
 }
 
@@ -579,9 +579,9 @@ process.compounds <- function(g, edge.attrs) {
           compound = as.character(compound)
 
           if(!is.null(compound) && compound %in% graph::nodes(g)) {
-            g = psf::add.kegg.edge(snode, compound, "ECrel", "compound", edge.attrs, g)
+            g = add.kegg.edge(snode, compound, "ECrel", "compound", edge.attrs, g)
             # cat("Compound processed: ", snode, ":", compound, " edge added", "\n")
-            g = psf::add.kegg.edge(compound, tnode, "ECrel", "compound", edge.attrs, g)
+            g = add.kegg.edge(compound, tnode, "ECrel", "compound", edge.attrs, g)
             # cat("Compound processed: ", compound, ":", tnode, " edge added", "\n")
 
             if(graph::edgeData(g, snode, tnode, edge.attrs$subtype1) == "compound"){
@@ -670,6 +670,11 @@ remove.disconnected.nodes <- function(g){
 }
 
 #' Plots the pathway with KEGG layout based on x and y coordinates taken from KGML file.
+#' 
+#' @param g graphNEL graph
+#' @param sink.nodes to be documented
+#' @import igraph
+#' 
 plot.pathway <- function(g, sink.nodes = NULL){
   igr = igraph::igraph.from.graphNEL(g)
   node.labels = graph::nodeData(g, graph::nodes(g), "label")
@@ -794,8 +799,8 @@ convert.ids.in.kegg.collection <- function(kegg.collection){
 order.nodes <- function(g){
   g = Rgraphviz::layoutGraph(g)
   nodeY <-graph::nodeRenderInfo(g)$nodeY
-  node.rank <-base:::rank(nodeY, ties.method="min")
-  node.order <- base:::sort(node.rank,decreasing=T)
+  node.rank <-base::rank(nodeY, ties.method="min")
+  node.order <- base::sort(node.rank,decreasing=T)
   order = list("node.order" = node.order, "node.rank" = node.rank)
   return(order)
 }

@@ -2,10 +2,9 @@
 #'
 #'
 #' @param g Tha pathway graph of graphNEL class
-#' @param data.mat A matrix data associated with the genes; rownames represent genes; a single gene-row may contain one or many data values;
+#' @param entrez.fc gene expression fold change matrix with entrez gene rownames (A matrix data associated with the genes; rownames represent genes; a single gene-row may contain one or many data values;)
 #'
 #' @return graphNEL object with the column-wise averaged gene data kept in the nodedata attribute of the graph
-#' @details
 map.gene.data <- function(g, entrez.fc){
   gene.data <- graph::nodeData(g)
   gene.data <- lapply(gene.data, function (x,y) {
