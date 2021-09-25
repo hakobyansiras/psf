@@ -5,3 +5,14 @@
 <!-- badges: end -->
 
 Pathway signal flow calculator 
+
+# Installation
+
+```
+install.packages("devtools")
+
+library(devtools)
+install_github(repo="hakobyansiras/PSFC",
+    build_vignette=TRUE,
+    dependencies=TRUE)
+```
