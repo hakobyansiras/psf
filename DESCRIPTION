@@ -1,0 +1,19 @@
+Package: psf
+Type: Package
+Title: What the Package Does (Title Case)
+Version: 0.1
+Date: 2015-07-24
+Author: Who wrote it
+Maintainer: Who to complain to <yourfault@somewhere.net>
+Description: More about what it does (maybe more than one line)
+License: What license is it under?
+LazyData: TRUE
+Imports: KEGGREST, graph, Rgraphviz, XML, biomaRt
+Collate: 'hello.R' 'kegg.functions.R' 'pathnet.functions.R'
+        'psf.functions.R' 'psf.opossom.R' 'psf.structures.node-class.R'
+        'psf.structures.edge-class.R'
+        'psf.structures.node-getValue-method.R' 'scriptlog.R'
+        'psf.report.sheets.R' 'plot.pathway.henry.R'
+        'psf.graph.functions.R'
+NeedsCompilation: no
+Packaged: 2016-12-06 13:36:12 UTC; Lilit Nersisyan

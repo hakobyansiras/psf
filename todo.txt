@@ -1,0 +1,6 @@
+reversedirections? 
+remove missing nodes ? 
+
+level 0 - level 2 
+order max -> min
+rank max -> min

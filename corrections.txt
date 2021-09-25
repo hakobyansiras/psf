@@ -1,0 +1,11 @@
+in ensembl.id.conversion
+ biomart.table = biomaRt::getBM( c(convert.from, convert.to), values = z, mart = mart, filters=convert.from, uniqueRows = T )
+ 
+in  psf.from.env.entrez.fc
+
+ if(calculate.significance){
+      cat("\nPerforming bootstrap calculations with", bst.steps, " steps\n")
+      psf.results = bootstrap.significance(psf.results.collection, entrez.fc, bst.steps)
+      psf.results.processed = process.psf.results(psf.results) # This shoukd be moved outside IF
+    }
+								  
