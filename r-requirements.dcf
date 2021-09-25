@@ -1,0 +1,13 @@
+r-version: 3.6
+mran-date: 2021-09-25
+update-packages: FALSE
+depends:
+    github::hakobyansiras/PSFC
+    KEGGREST
+    graph
+    Rgraphviz
+    XML
+    biomaRt
+    DT
+    shinycustomloader
+    data.table
