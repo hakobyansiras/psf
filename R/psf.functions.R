@@ -20,9 +20,12 @@ psf.flow <- function(g, node.ordering, sink.nodes, split = TRUE, sum = FALSE) {
   E = data.frame(as.numeric(graph::nodeData(g, nods, attr = "expression")), row.names=nods)
 
   #impacts
-  I = matrix (data=NA, nrow=length(nods),ncol= length(nods))
+  I = matrix(data=NA, nrow=length(nods),ncol= length(nods))
+  W = matrix(data = NA, nrow = length(nods), ncol = length(nods))
   rownames(I) = nods
   colnames(I) = nods
+  rownames(W) = nods
+  colnames(W) = nods
 
   for (node in nods){
     #     show(node)
@@ -31,6 +34,8 @@ psf.flow <- function(g, node.ordering, sink.nodes, split = TRUE, sum = FALSE) {
       from = node
       to = graph::nodes(g)[graph::edgeL(g)[node][[1]]$edges][e]
       if (!is.na(to) && length(to)>0){
+        weight = graph::edgeData(g, from = from, to =to, attr = "weight")[[1]]
+        W[from, to] = weight
         impact = graph::edgeData(g, from = from, to =to, attr = "impact")[[1]]
         I[from, to] = impact
       }
@@ -58,8 +63,9 @@ psf.flow <- function(g, node.ordering, sink.nodes, split = TRUE, sum = FALSE) {
       #       in.signal = S[parent.nodes,1]
       node.signal <- graph::nodeData(g, nods[i], attr = "signal")[[1]]
       impact = I[parent.nodes,nods[i]]
+      weight = W[parent.nodes,nods[i]]
       if(sum){
-        node.signal = (node.exp)+sum(in.signal*impact)
+        node.signal = (node.exp)+sum(in.signal*weight*impact)
       } else {
         if(split){
           proportion = 1
@@ -68,14 +74,20 @@ psf.flow <- function(g, node.ordering, sink.nodes, split = TRUE, sum = FALSE) {
             # proportion = 1
             #           node.signal <- (proportion*node.exp)+(in.signal*impact)
             # node.signal <- (node.exp)+sum(in.signal*impact) # no need for proportions in summation - we use this for summinng now
-            node.signal <- sum((proportion*node.exp)*(in.signal^impact)) #esi
+            node.signal <- sum((proportion*weight*node.exp)*(in.signal^impact)) #esi
             # cat("\n node.exp:", node.exp,"node.signal", node.signal, "\n")
             # node.signal <- sum((proportion*node.exp)*(in.signal*impact))
+          } else {
+            #Returns the product of signals without splitting - is for updateing, but applies only in this special case where all the rules are s*t, or 1/s*t
+            proportion = 1
+            node.signal <- node.exp*(weight*in.signal^impact)
+            names(node.signal) <- NULL
+            # cat(paste("beging: node",i, "signal:", in.signal, "\n"))
           }
         } else {
           #Returns the product of signals without splitting - is for updateing, but applies only in this special case where all the rules are s*t, or 1/s*t
           proportion = 1
-          node.signal <- node.exp*prod(in.signal^impact)
+          node.signal <- node.exp*weight*prod(in.signal^impact)
         }
       }
       graph::nodeData(g, nods[i], attr = "signal") <- node.signal

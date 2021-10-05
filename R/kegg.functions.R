@@ -155,10 +155,11 @@ parse.KGML <- function(kgml){
 
   # Adding edges to the graph
 
-  edge.attrs = list(impact="impact", type="type", subtype1="subtype1",
+  edge.attrs = list(impact="impact", weight="weight", type="type", subtype1="subtype1",
                     subtypeValue1 = "subtypeValue1",
                     subtypeValue2 = "subtypeValue2", subtype2 = "subtype2")
   graph::edgeDataDefaults(g,attr=edge.attrs$impact) <- 1
+  graph::edgeDataDefaults(g,attr=edge.attrs$weight) <- 1
   graph::edgeDataDefaults(g,attr=edge.attrs$type) <- NA
   graph::edgeDataDefaults(g,attr=edge.attrs$subtype1) <- NA
   graph::edgeDataDefaults(g,attr=edge.attrs$subtypeValue1) <- NA
@@ -735,7 +736,7 @@ generate.kegg.collection <- function(pathway.id.list, out.dir, sink.nodes = T){
   return(kegg.collection)
 }
 
-generate.kegg.collection.from.kgml <- function(kgml.files, out.dir, sink.nodes = T){
+generate.kegg.collection.from.kgml <- function(kgml.files, sink.nodes = T){
   kegg.collection = list()
   for(kgml in kgml.files){
     cat("kgml: ", kgml, "\n")

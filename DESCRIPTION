@@ -16,18 +16,29 @@ Imports:
         XML, 
         biomaRt,
         igraph,
-        methods
+        methods,
+        magick,
+        shiny,
+        shape,
+        DT,
+        plotly,
+        data.table,
+        shinyjs,
+        visNetwork,
+        shinyjqui,
+        ggplot2,
+        shinyWidgets,
+        shinycssloaders
 Depends:
     R (>= 3.5)
 Collate: 'kegg.functions.R' 'pathnet.functions.R'
-        'psf.functions.R' 'psf.opossom.R' 'psf.structures.node-class.R'
-        'psf.structures.edge-class.R'
-        'psf.structures.node-getValue-method.R' 'scriptlog.R'
-        'psf.report.sheets.R' 'plot.pathway.henry.R'
-        'psf.graph.functions.R'
+         'psf.functions.R' 'psf.opossom.R' 'psf.structures.node-class.R'
+         'psf.structures.edge-class.R'
+         'psf.structures.node-getValue-method.R' 'scriptlog.R'
+         'psf.report.sheets.R' 'plot.pathway.henry.R'
+         'psf.graph.functions.R' 'run_interactive_app.R'
 Suggests:
     knitr, 
-    shiny,
     testthat,
     rmarkdown
 NeedsCompilation: no
