@@ -38,17 +38,7 @@ kegg_data_downloader <- function(pathway_name) {
   
   graph <- psf::generate.kegg.collection.from.kgml(kgml_path)[[1]]
   
-  graph::edgeDataDefaults(graph$graph, attr = "existence") <- "exist"
-  graph::nodeDataDefaults(graph$graph, attr = "existence") <- "exist"
-  graph::edgeDataDefaults(graph$graph, attr = "change_info") <- "no_change"
-  graph::nodeDataDefaults(graph$graph, attr = "change_info") <- "no_change"
-  graph::edgeDataDefaults(graph$graph, attr = "data_source") <- "kegg"
-  graph::nodeDataDefaults(graph$graph, attr = "data_source") <- "kegg"  
-  
-  graph::edgeDataDefaults(graph$graph, attr = "weight") <- 1
-  graph::nodeDataDefaults(graph$graph, attr = "psf_function") <- "mean"
-  
-  return(list(pathway = graph, image = img))
+  return(list(pathway = graph, image = img, group_graphics = graph$group_nodes))
   
 }
 
@@ -283,10 +273,10 @@ kegg_node_mapper <- function(group_graphics, kegg_pathway_graphics, pathway_name
   ## color grop nodes
   if(length(group_graphics) > 0 ) {
     lapply(group_graphics, function(z) {
-      rect( z$graphics$x-z$graphics$width*0.5, 
-            z$graphics$y+z$graphics$height*0.5, 
-            z$graphics$x+z$graphics$width*0.5, 
-            z$graphics$y-z$graphics$height*0.5, 
+      rect( z$kegg.gr.x-z$kegg.gr.width*0.5, 
+            z$kegg.gr.y+z$kegg.gr.height*0.5, 
+            z$kegg.gr.x+z$kegg.gr.width*0.5, 
+            z$kegg.gr.y-z$kegg.gr.height*0.5, 
             border = "yellow", lty = "dashed", lwd=2)
     })
   }
@@ -678,7 +668,7 @@ chemokine_pathway_data <- kegg_data_downloader("Chemokine_signaling_pathway")
 shinyServer(function(input, output, session) {
   
   #### reactive values ####
-  v <- reactiveValues(image_file = kegg_node_mapper(group_graphics = group_graphics[["Chemokine_signaling_pathway"]], kegg_pathway_graphics = graphical_data_generator(chemokine_pathway_data$pathway), pathway_name = "Chemokine_signaling_pathway", pathway_image = chemokine_pathway_data$image, show_changes = F) %>% 
+  v <- reactiveValues(image_file = kegg_node_mapper(group_graphics = chemokine_pathway_data$group_graphics, kegg_pathway_graphics = graphical_data_generator(chemokine_pathway_data$pathway), pathway_name = "Chemokine_signaling_pathway", pathway_image = chemokine_pathway_data$image, show_changes = F) %>% 
                         image_write(tempfile(fileext='png'), format = 'png'),
                       pathway_name = "Chemokine_signaling_pathway",
                       pathway = chemokine_pathway_data$pathway, pathway_image = chemokine_pathway_data$image, pathway_data = chemokine_pathway_data, graphical_data = graphical_data_generator(chemokine_pathway_data$pathway), 
@@ -723,7 +713,7 @@ shinyServer(function(input, output, session) {
       v$pathway_exp_colored <- FALSE
       v$pathway_psf_colored <- FALSE
       
-      v$image_file <- kegg_node_mapper(group_graphics = group_graphics[[v$pathway_name]], kegg_pathway_graphics = v$graphical_data, pathway_name = v$pathway_name, pathway_image = v$pathway_image, show_changes = input$show_changes) %>% 
+      v$image_file <- kegg_node_mapper(group_graphics = v$pathway_data$group_graphics, kegg_pathway_graphics = v$graphical_data, pathway_name = v$pathway_name, pathway_image = v$pathway_image, show_changes = input$show_changes) %>% 
         image_write(tempfile(fileext='png'), format = 'png')
       
     }
@@ -766,7 +756,7 @@ shinyServer(function(input, output, session) {
     } else {
       v$graphical_data <- graphical_data_generator(v$pathway)
     }
-    v$image_file <- kegg_node_mapper(group_graphics = group_graphics[[v$pathway_name]], kegg_pathway_graphics = v$graphical_data, pathway_name = v$pathway_name, pathway_image = v$pathway_image, show_changes = input$show_changes) %>% 
+    v$image_file <- kegg_node_mapper(group_graphics = v$pathway_data$group_graphics, kegg_pathway_graphics = v$graphical_data, pathway_name = v$pathway_name, pathway_image = v$pathway_image, show_changes = input$show_changes) %>% 
       image_write(tempfile(fileext='png'), format = 'png')
   })
   
@@ -804,10 +794,10 @@ shinyServer(function(input, output, session) {
         colors <- v$psf_and_colors$psf_colors
       }
       
-      v$image_file <- kegg_node_mapper(group_graphics = group_graphics[[v$pathway_name]], kegg_pathway_graphics = v$graphical_data, pathway_name = v$pathway_name, pathway_image = v$pathway_image, highlight.genes = v$selected_node_name, color.genes = colors, color_bar_psf_mode = v$color_bar_psf_mode, col_legend_title = v$col_legend_title, draw_color_bar = v$draw_color_bar, color_bar_lims = v$color_bar_lims) %>% 
+      v$image_file <- kegg_node_mapper(group_graphics = v$pathway_data$group_graphics, kegg_pathway_graphics = v$graphical_data, pathway_name = v$pathway_name, pathway_image = v$pathway_image, highlight.genes = v$selected_node_name, color.genes = colors, color_bar_psf_mode = v$color_bar_psf_mode, col_legend_title = v$col_legend_title, draw_color_bar = v$draw_color_bar, color_bar_lims = v$color_bar_lims) %>% 
         image_write(tempfile(fileext='png'), format = 'png')
     } else {
-    v$image_file <- kegg_node_mapper(group_graphics = group_graphics[[v$pathway_name]], kegg_pathway_graphics = v$graphical_data, pathway_name = v$pathway_name, pathway_image = v$pathway_image, highlight.genes = v$selected_node_name, show_changes = input$show_changes) %>% 
+    v$image_file <- kegg_node_mapper(group_graphics = v$pathway_data$group_graphics, kegg_pathway_graphics = v$graphical_data, pathway_name = v$pathway_name, pathway_image = v$pathway_image, highlight.genes = v$selected_node_name, show_changes = input$show_changes) %>% 
       image_write(tempfile(fileext='png'), format = 'png')
     }
     
@@ -850,10 +840,10 @@ shinyServer(function(input, output, session) {
           colors <- v$psf_and_colors$psf_colors
         }
         
-        v$image_file <- kegg_node_mapper(group_graphics = group_graphics[[v$pathway_name]], kegg_pathway_graphics = v$graphical_data, pathway_name = v$pathway_name, pathway_image = v$pathway_image, highlight.genes = v$selected_node_name, color.genes = colors, color_bar_psf_mode = v$color_bar_psf_mode, col_legend_title = v$col_legend_title, draw_color_bar = v$draw_color_bar, color_bar_lims = v$color_bar_lims) %>% 
+        v$image_file <- kegg_node_mapper(group_graphics = v$pathway_data$group_graphics, kegg_pathway_graphics = v$graphical_data, pathway_name = v$pathway_name, pathway_image = v$pathway_image, highlight.genes = v$selected_node_name, color.genes = colors, color_bar_psf_mode = v$color_bar_psf_mode, col_legend_title = v$col_legend_title, draw_color_bar = v$draw_color_bar, color_bar_lims = v$color_bar_lims) %>% 
           image_write(tempfile(fileext='png'), format = 'png')
       } else {
-      v$image_file <- kegg_node_mapper(group_graphics = group_graphics[[v$pathway_name]], kegg_pathway_graphics = v$graphical_data, pathway_name = v$pathway_name, pathway_image = v$pathway_image, highlight.genes = v$selected_node_name, show_changes = input$show_changes) %>% 
+      v$image_file <- kegg_node_mapper(group_graphics = v$pathway_data$group_graphics, kegg_pathway_graphics = v$graphical_data, pathway_name = v$pathway_name, pathway_image = v$pathway_image, highlight.genes = v$selected_node_name, show_changes = input$show_changes) %>% 
         image_write(tempfile(fileext='png'), format = 'png')
       }
       
@@ -906,10 +896,10 @@ shinyServer(function(input, output, session) {
           colors <- v$psf_and_colors$psf_colors
         }
         
-        v$image_file <- kegg_node_mapper(group_graphics = group_graphics[[v$pathway_name]], kegg_pathway_graphics = v$graphical_data, pathway_name = v$pathway_name, pathway_image = v$pathway_image, highlight.genes = v$selected_node_name, color.genes = colors, color_bar_psf_mode = v$color_bar_psf_mode, col_legend_title = v$col_legend_title, draw_color_bar = v$draw_color_bar, color_bar_lims = v$color_bar_lims, edge_mapping = TRUE, show_changes = input$show_changes, edge_in_mode = input$ingoing_edge) %>% 
+        v$image_file <- kegg_node_mapper(group_graphics = v$pathway_data$group_graphics, kegg_pathway_graphics = v$graphical_data, pathway_name = v$pathway_name, pathway_image = v$pathway_image, highlight.genes = v$selected_node_name, color.genes = colors, color_bar_psf_mode = v$color_bar_psf_mode, col_legend_title = v$col_legend_title, draw_color_bar = v$draw_color_bar, color_bar_lims = v$color_bar_lims, edge_mapping = TRUE, show_changes = input$show_changes, edge_in_mode = input$ingoing_edge) %>% 
           image_write(tempfile(fileext='png'), format = 'png')
       } else {
-        v$image_file <- kegg_node_mapper(group_graphics = group_graphics[[v$pathway_name]], kegg_pathway_graphics = v$graphical_data, pathway_name = v$pathway_name, pathway_image = v$pathway_image, highlight.genes = v$selected_node_name, edge_mapping = TRUE, show_changes = input$show_changes, edge_in_mode = input$ingoing_edge) %>% 
+        v$image_file <- kegg_node_mapper(group_graphics = v$pathway_data$group_graphics, kegg_pathway_graphics = v$graphical_data, pathway_name = v$pathway_name, pathway_image = v$pathway_image, highlight.genes = v$selected_node_name, edge_mapping = TRUE, show_changes = input$show_changes, edge_in_mode = input$ingoing_edge) %>% 
           image_write(tempfile(fileext='png'), format = 'png')
       }
       
@@ -925,7 +915,7 @@ shinyServer(function(input, output, session) {
     
     v$selected_node_name <- v$graphical_data$node_coords[which(v$graphical_data$node_coords$node_id %in% disconnected_nodes), c("node_name", "gr_name", "node_id", "entrez_id")]
     
-    v$image_file <- kegg_node_mapper(group_graphics = group_graphics[[v$pathway_name]], kegg_pathway_graphics = v$graphical_data, pathway_name = v$pathway_name, pathway_image = v$pathway_image, highlight.genes = v$selected_node_name, show_changes = input$show_changes, highlight_color = "#a3297a", opacity = 0.5) %>% 
+    v$image_file <- kegg_node_mapper(group_graphics = v$pathway_data$group_graphics, kegg_pathway_graphics = v$graphical_data, pathway_name = v$pathway_name, pathway_image = v$pathway_image, highlight.genes = v$selected_node_name, show_changes = input$show_changes, highlight_color = "#a3297a", opacity = 0.5) %>% 
       image_write(tempfile(fileext='png'), format = 'png')
     
   })
@@ -949,7 +939,7 @@ shinyServer(function(input, output, session) {
     v$allow_edge_draw <- TRUE
     updateCheckboxInput(session, "event_node_mode", value = FALSE)
     v$selected_node_name <- setNames(data.frame(matrix(ncol = 4, nrow = 0)), c("node_name", "gr_name", "node_id", "entrez_id"))
-    v$image_file <- kegg_node_mapper(group_graphics = group_graphics[[v$pathway_name]], kegg_pathway_graphics = v$graphical_data, pathway_name = v$pathway_name, pathway_image = v$pathway_image, highlight.genes = v$selected_node_name, show_changes = input$show_changes) %>% 
+    v$image_file <- kegg_node_mapper(group_graphics = v$pathway_data$group_graphics, kegg_pathway_graphics = v$graphical_data, pathway_name = v$pathway_name, pathway_image = v$pathway_image, highlight.genes = v$selected_node_name, show_changes = input$show_changes) %>% 
       image_write(tempfile(fileext='png'), format = 'png')
     
     v$visnet_list <- visnet_creator(v$graphical_data)
@@ -967,7 +957,7 @@ shinyServer(function(input, output, session) {
       
       v$selected_node_name <- v$graphical_data$node_coords[which(v$graphical_data$node_coords$node_id %in% v$ordered_nodes[v$ordered_node_id]), c("node_name", "gr_name", "node_id", "entrez_id")]
       
-      v$image_file <- kegg_node_mapper(group_graphics = group_graphics[[v$pathway_name]], kegg_pathway_graphics = v$graphical_data, pathway_name = v$pathway_name, pathway_image = v$pathway_image, highlight.genes = v$selected_node_name, show_changes = input$show_changes) %>% 
+      v$image_file <- kegg_node_mapper(group_graphics = v$pathway_data$group_graphics, kegg_pathway_graphics = v$graphical_data, pathway_name = v$pathway_name, pathway_image = v$pathway_image, highlight.genes = v$selected_node_name, show_changes = input$show_changes) %>% 
         image_write(tempfile(fileext='png'), format = 'png')
       
       v$ordered_node_id <- v$ordered_node_id + 1
@@ -981,7 +971,7 @@ shinyServer(function(input, output, session) {
     }
     v$ordered_node_id <- 1
     v$selected_node_name <- setNames(data.frame(matrix(ncol = 4, nrow = 0)), c("node_name", "gr_name", "node_id", "entrez_id"))
-    v$image_file <- kegg_node_mapper(group_graphics = group_graphics[[v$pathway_name]], kegg_pathway_graphics = v$graphical_data, pathway_name = v$pathway_name, pathway_image = v$pathway_image, highlight.genes = v$selected_node_name, show_changes = input$show_changes) %>% 
+    v$image_file <- kegg_node_mapper(group_graphics = v$pathway_data$group_graphics, kegg_pathway_graphics = v$graphical_data, pathway_name = v$pathway_name, pathway_image = v$pathway_image, highlight.genes = v$selected_node_name, show_changes = input$show_changes) %>% 
       image_write(tempfile(fileext='png'), format = 'png')
   })
   
@@ -1191,7 +1181,7 @@ shinyServer(function(input, output, session) {
           highlight_genes <- rbind(v$graphical_data$node_coords[which(v$graphical_data$node_coords$node_id %in% v$database_out[input$edge_table_rows_selected, 9]), c("node_name", "gr_name", "node_id", "entrez_id")],
                                    v$graphical_data$node_coords[which(v$graphical_data$node_coords$node_id %in% v$database_out[input$edge_table_rows_selected, 10]), c("node_name", "gr_name", "node_id", "entrez_id")])
           
-          v$image_file <- kegg_node_mapper(group_graphics = group_graphics[[v$pathway_name]], kegg_pathway_graphics = v$graphical_data, pathway_name = v$pathway_name, pathway_image = v$pathway_image, highlight.genes = highlight_genes, edge_mapping = TRUE, advanced_edge_ampping = TRUE, show_changes = input$show_changes) %>%
+          v$image_file <- kegg_node_mapper(group_graphics = v$pathway_data$group_graphics, kegg_pathway_graphics = v$graphical_data, pathway_name = v$pathway_name, pathway_image = v$pathway_image, highlight.genes = highlight_genes, edge_mapping = TRUE, advanced_edge_ampping = TRUE, show_changes = input$show_changes) %>%
             image_write(tempfile(fileext='png'), format = 'png')
           
           v$previous_row_selection <- input$edge_table_rows_selected
@@ -1232,7 +1222,7 @@ shinyServer(function(input, output, session) {
     
     v$selected_interaction <- list(source = "database", selected_interaction = v$selected_node_name[,c("gr_name", "node_id")])
     
-    v$image_file <- kegg_node_mapper(group_graphics = group_graphics[[v$pathway_name]], kegg_pathway_graphics = v$graphical_data, pathway_name = v$pathway_name, pathway_image = v$pathway_image, highlight.genes = v$selected_node_name, edge_mapping = TRUE, advanced_edge_ampping = TRUE, show_changes = input$show_changes) %>%
+    v$image_file <- kegg_node_mapper(group_graphics = v$pathway_data$group_graphics, kegg_pathway_graphics = v$graphical_data, pathway_name = v$pathway_name, pathway_image = v$pathway_image, highlight.genes = v$selected_node_name, edge_mapping = TRUE, advanced_edge_ampping = TRUE, show_changes = input$show_changes) %>%
       image_write(tempfile(fileext='png'), format = 'png')
     
   })
@@ -1241,11 +1231,11 @@ shinyServer(function(input, output, session) {
   observeEvent(input$image_edge_direction, {
     if(input$image_edge_direction) {
       v$selected_interaction <- list(source = "database", selected_interaction = v$selected_node_name[,c("gr_name", "node_id")])
-      v$image_file <- kegg_node_mapper(group_graphics = group_graphics[[v$pathway_name]], kegg_pathway_graphics = v$graphical_data, pathway_name = v$pathway_name, pathway_image = v$pathway_image, highlight.genes = v$selected_node_name, edge_mapping = TRUE, advanced_edge_ampping = TRUE, show_changes = input$show_changes) %>%
+      v$image_file <- kegg_node_mapper(group_graphics = v$pathway_data$group_graphics, kegg_pathway_graphics = v$graphical_data, pathway_name = v$pathway_name, pathway_image = v$pathway_image, highlight.genes = v$selected_node_name, edge_mapping = TRUE, advanced_edge_ampping = TRUE, show_changes = input$show_changes) %>%
         image_write(tempfile(fileext='png'), format = 'png')
     } else {
       v$selected_interaction <- list(source = "database", selected_interaction = v$selected_node_name[2:1,c("gr_name", "node_id")])
-      v$image_file <- kegg_node_mapper(group_graphics = group_graphics[[v$pathway_name]], kegg_pathway_graphics = v$graphical_data, pathway_name = v$pathway_name, pathway_image = v$pathway_image, highlight.genes = v$selected_node_name[2:1,], edge_mapping = TRUE, advanced_edge_ampping = TRUE, show_changes = input$show_changes) %>%
+      v$image_file <- kegg_node_mapper(group_graphics = v$pathway_data$group_graphics, kegg_pathway_graphics = v$graphical_data, pathway_name = v$pathway_name, pathway_image = v$pathway_image, highlight.genes = v$selected_node_name[2:1,], edge_mapping = TRUE, advanced_edge_ampping = TRUE, show_changes = input$show_changes) %>%
         image_write(tempfile(fileext='png'), format = 'png')
     }
   }, ignoreInit = T)
@@ -1457,7 +1447,7 @@ shinyServer(function(input, output, session) {
       
       v$selected_node_name <- setNames(data.frame(matrix(ncol = 4, nrow = 0)), c("node_name", "gr_name", "node_id", "entrez_id"))
       
-      v$image_file <- kegg_node_mapper(group_graphics = group_graphics[[v$pathway_name]], kegg_pathway_graphics = v$graphical_data, pathway_name = v$pathway_name, pathway_image = v$pathway_image, show_changes = input$show_changes) %>%
+      v$image_file <- kegg_node_mapper(group_graphics = v$pathway_data$group_graphics, kegg_pathway_graphics = v$graphical_data, pathway_name = v$pathway_name, pathway_image = v$pathway_image, show_changes = input$show_changes) %>%
         image_write(tempfile(fileext='png'), format = 'png')
       
       # saveRDS(v$pathway, file = paste0("edited_pathway_graphs/", v$pathway_name, ".RDS"))
@@ -1545,7 +1535,7 @@ shinyServer(function(input, output, session) {
     
     v$color_bar_psf_mode <- TRUE
     
-    v$image_file <- kegg_node_mapper(group_graphics = group_graphics[[v$pathway_name]], kegg_pathway_graphics = v$graphical_data, pathway_name = v$pathway_name, pathway_image = v$pathway_image, color.genes = v$psf_and_colors$exp_colors, color_bar_psf_mode = v$color_bar_psf_mode, col_legend_title = v$col_legend_title, color_bar_lims = v$color_bar_lims, draw_color_bar = v$draw_color_bar) %>% 
+    v$image_file <- kegg_node_mapper(group_graphics = v$pathway_data$group_graphics, kegg_pathway_graphics = v$graphical_data, pathway_name = v$pathway_name, pathway_image = v$pathway_image, color.genes = v$psf_and_colors$exp_colors, color_bar_psf_mode = v$color_bar_psf_mode, col_legend_title = v$col_legend_title, color_bar_lims = v$color_bar_lims, draw_color_bar = v$draw_color_bar) %>% 
       image_write(tempfile(fileext='png'), format = 'png')
     
     v$visnet_list <- visnet_creator(v$graphical_data, node_colors = v$psf_and_colors$exp_colors)
@@ -1588,7 +1578,7 @@ shinyServer(function(input, output, session) {
     v$color_bar_psf_mode <- TRUE
     
     
-    v$image_file <- kegg_node_mapper(group_graphics = group_graphics[[v$pathway_name]], kegg_pathway_graphics = v$graphical_data, pathway_name = v$pathway_name, pathway_image = v$pathway_image, color.genes = v$psf_and_colors$psf_colors, color_bar_psf_mode = v$color_bar_psf_mode, col_legend_title = v$col_legend_title, color_bar_lims = v$color_bar_lims, draw_color_bar = v$draw_color_bar)
+    v$image_file <- kegg_node_mapper(group_graphics = v$pathway_data$group_graphics, kegg_pathway_graphics = v$graphical_data, pathway_name = v$pathway_name, pathway_image = v$pathway_image, color.genes = v$psf_and_colors$psf_colors, color_bar_psf_mode = v$color_bar_psf_mode, col_legend_title = v$col_legend_title, color_bar_lims = v$color_bar_lims, draw_color_bar = v$draw_color_bar)
     
     
     sink_plot <- ggplot(v$psf_and_colors$sink_signals, aes(x=sink_name, y=signal, fill=signal)) +
@@ -1649,7 +1639,7 @@ shinyServer(function(input, output, session) {
     
     v$selected_node_name <- NULL
     
-    v$image_file <- kegg_node_mapper(group_graphics = group_graphics[[v$pathway_name]], kegg_pathway_graphics = v$graphical_data, pathway_name = v$pathway_name, pathway_image = v$pathway_image, highlight.genes = v$selected_node_name, color.genes = v$psf_and_colors$psf_colors, color_bar_psf_mode = v$color_bar_psf_mode, col_legend_title = v$col_legend_title, color_bar_lims = v$color_bar_lims, draw_color_bar = v$draw_color_bar) %>% 
+    v$image_file <- kegg_node_mapper(group_graphics = v$pathway_data$group_graphics, kegg_pathway_graphics = v$graphical_data, pathway_name = v$pathway_name, pathway_image = v$pathway_image, highlight.genes = v$selected_node_name, color.genes = v$psf_and_colors$psf_colors, color_bar_psf_mode = v$color_bar_psf_mode, col_legend_title = v$col_legend_title, color_bar_lims = v$color_bar_lims, draw_color_bar = v$draw_color_bar) %>% 
       image_write(tempfile(fileext='png'), format = 'png')
     
     v$visnet_list <- visnet_creator(v$graphical_data, node_colors = v$psf_and_colors$psf_colors)
@@ -1720,7 +1710,7 @@ shinyServer(function(input, output, session) {
     
     v$selected_node_name <- NULL
     
-    v$image_file <- kegg_node_mapper(group_graphics = group_graphics[[v$pathway_name]], kegg_pathway_graphics = v$graphical_data, pathway_name = v$pathway_name, pathway_image = v$pathway_image, highlight.genes = v$selected_node_name, color.genes = v$psf_and_colors$psf_colors, color_bar_psf_mode = v$color_bar_psf_mode, col_legend_title = v$col_legend_title, color_bar_lims = v$color_bar_lims, draw_color_bar = v$draw_color_bar) %>% 
+    v$image_file <- kegg_node_mapper(group_graphics = v$pathway_data$group_graphics, kegg_pathway_graphics = v$graphical_data, pathway_name = v$pathway_name, pathway_image = v$pathway_image, highlight.genes = v$selected_node_name, color.genes = v$psf_and_colors$psf_colors, color_bar_psf_mode = v$color_bar_psf_mode, col_legend_title = v$col_legend_title, color_bar_lims = v$color_bar_lims, draw_color_bar = v$draw_color_bar) %>% 
       image_write(tempfile(fileext='png'), format = 'png')
     
     v$visnet_list <- visnet_creator(v$graphical_data, node_colors = v$psf_and_colors$psf_colors)

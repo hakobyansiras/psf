@@ -1,4 +1,3 @@
-#'
 Node <- setClass(
   "Node",
   slots = c(

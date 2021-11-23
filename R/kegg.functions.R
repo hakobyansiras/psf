@@ -2,7 +2,7 @@
 #' @param id KEGG identifier of the pathway
 #' @param dir The directory where the downloaded file should be saved
 #' @return The filepath of the downloaded pathway or NULL the pathway was not downloaded
-#'
+#' @export
 download.KGML <- function(id, dir){
   if (!dir.exists(dir)){
     if(!dir.create(dir))
@@ -26,7 +26,7 @@ download.KGML <- function(id, dir){
 #'
 #' @param kgml The KGML file path
 #' @return GraphNEL object containing the parsed pathway
-#'
+#' @export
 parse.KGML <- function(kgml){
   if(!file.exists(kgml))
     stop("Provided KGML file: ", kgml, ", does not exist")
@@ -102,6 +102,11 @@ parse.KGML <- function(kgml){
   graph::nodeDataDefaults(g,attr="type") <- "gene"
   graph::nodeDataDefaults(g,attr="label") <- "NA"
   graph::nodeDataDefaults(g,attr="components") <- "NA"
+  graph::nodeDataDefaults(g, attr = "existence") <- "exist"
+  graph::nodeDataDefaults(g, attr = "change_info") <- "no_change"
+  graph::nodeDataDefaults(g, attr = "data_source") <- "kegg"
+  graph::nodeDataDefaults(g, attr = "node_function") <- "mean"
+  
   for(attr in entry.attr.names){
     graph::nodeDataDefaults(g, attr = attr) <- NA
   }
@@ -157,7 +162,9 @@ parse.KGML <- function(kgml){
 
   edge.attrs = list(impact="impact", weight="weight", type="type", subtype1="subtype1",
                     subtypeValue1 = "subtypeValue1",
-                    subtypeValue2 = "subtypeValue2", subtype2 = "subtype2")
+                    subtypeValue2 = "subtypeValue2", subtype2 = "subtype2",
+                    existence = "existence", change_info = "change_info", data_source = "data_source"
+                    )
   graph::edgeDataDefaults(g,attr=edge.attrs$impact) <- 1
   graph::edgeDataDefaults(g,attr=edge.attrs$weight) <- 1
   graph::edgeDataDefaults(g,attr=edge.attrs$type) <- NA
@@ -165,7 +172,9 @@ parse.KGML <- function(kgml){
   graph::edgeDataDefaults(g,attr=edge.attrs$subtypeValue1) <- NA
   graph::edgeDataDefaults(g,attr=edge.attrs$subtype2) <- NA
   graph::edgeDataDefaults(g,attr=edge.attrs$subtypeValue2) <- NA
-
+  graph::edgeDataDefaults(g, attr = edge.attrs$existence) <- "exist"
+  graph::edgeDataDefaults(g, attr = edge.attrs$change_info) <- "no_change"
+  graph::edgeDataDefaults(g, attr = edge.attrs$data_source) <- "kegg"
 
   relations = root.children[which(names(root.children) == "relation")]
   for(relation in relations){
@@ -233,6 +242,7 @@ parse.KGML <- function(kgml){
 
   ## handle group nodes: connect component nodes to each other
   ## and to the rest of the graph and remove group nodes
+  group_nodes <- list()
   for(node in graph::nodes(g)){
     if(graph::nodeData(g, node, "type") == "group"){
       components = as.character(graph::nodeData(g, node, "components"))
@@ -241,6 +251,9 @@ parse.KGML <- function(kgml){
       if(length(na.ind) > 0)
         components = components[-na.ind]
       g = process.groupNode(node,components, g, edge.attrs)
+      
+      ## keeping group nodes for visualization
+      group_nodes[node] <- graph::nodeData(g, node)
       g = graph::removeNode(node, g)
       # cat("Group node processed: ", node, "\n")
     }
@@ -256,9 +269,17 @@ parse.KGML <- function(kgml){
   g = set.edge.impacts(g)
 
 
-  return(g)
+  return(list(g = g, group_nodes = group_nodes))
 }
 
+#' Add edge to GraphNEL graph
+#'
+#' @param entry1 interactor 1
+#' @param entry2 interactor 2
+#' @param subtype interaction subypte
+#' @param g GraphNEL object
+#' @return GraphNEL object containing modified pathway
+#' @export
 add.kegg.edge.mut <- function(entry1, entry2, subtype, g){
   edge.attrs = list(impact="impact", type="type", subtype1="subtype1",
                     subtypeValue1 = "subtypeValue1",
@@ -272,6 +293,16 @@ add.kegg.edge.mut <- function(entry1, entry2, subtype, g){
   return(g)
 }
 
+#' Add edge to GraphNEL graph
+#'
+#' @param entry1 interactor 1
+#' @param entry2 interactor 2
+#' @param type KEGG edge relation type (eg. PPrel - protein protein relation, GErel- gene expression relation)
+#' @param subtype interaction subypte
+#' @param edge.attrs edge attributes
+#' @param g GraphNEL object
+#' @return GraphNEL object containing modified pathway
+#' @export
 add.kegg.edge <- function(entry1, entry2, type, subtype, edge.attrs, g){
   if(is.null(type) || is.na(type))
     stop("null type for edge ", entry1, "|", entry2, "\n")
@@ -300,6 +331,12 @@ add.kegg.edge <- function(entry1, entry2, type, subtype, edge.attrs, g){
   return(g)
 }
 
+#' Sets edge impacts for PSF analysis
+#' @param g GraphNEL object
+#' @param subtype1.attr attribut name for subtype1
+#' @param subtype2.attr attribute name for subtype2
+#' @param impact.attr.name name of impact attribut
+#' @export
 set.edge.impacts <- function(g, subtype1.attr = "subtype1",
                              subtype2.attr = "subtype2", impact.attr.name = "impact"){
   inhibition.ind.1 <-grep("inhibition",  unlist(graph::edgeData(g, attr = subtype1.attr)))
@@ -322,7 +359,10 @@ set.edge.impacts <- function(g, subtype1.attr = "subtype1",
   return(g)
 }
 
-
+#' Get pathway general attributes
+#' @param kgml path to kgml file
+#' @export
+#' 
 get.pathway.attrs <- function(kgml){
   if(!file.exists(kgml))
     stop("Provided KGML file: ", kgml, ", does not exist")
@@ -349,6 +389,7 @@ get.pathway.attrs <- function(kgml){
 #' @param edge.attrs The list of edge attr
 #'
 #' @details The all the edges to and from the group node are
+#' @export
 process.groupNode <- function(groupNode, components, g, edge.attrs){
 
   inComponents = vector(mode = "character") #components receiving incoming connections
@@ -500,6 +541,7 @@ process.groupNode <- function(groupNode, components, g, edge.attrs){
 #' @param g The graph of class graphNEL
 #'
 #' @return g The modified graph with added (or not) edge
+#' @export
 addEdgeSafe <- function(sourceNode, targetNode, g) {
   if(!(targetNode %in% graph::edges(g)[[sourceNode]]))
     if (!(sourceNode %in% graph::edges(g)[[targetNode]])) {
@@ -519,6 +561,7 @@ addEdgeSafe <- function(sourceNode, targetNode, g) {
 #' @param edge.attrs The list of edge attributes in the graph
 #'
 #' @details A new edge between the new source and target nodes will be added to the graph, the previous edge will be removed, and its attributes will be transfered to the new edge.
+#' @export
 redirectEdge <- function(prevSource, prevTarget,newSource, newTarget, g, edge.attrs) {
   if(prevTarget %in% graph::edges(g)[[prevSource]]) {
     prev.edge.attrs = list()
@@ -550,10 +593,11 @@ remove.edge <- function(from, to, g){
 
 #' Process protein compound interactions
 #'
-#'@param g The pathway graph of graphNEL class
-#'@param edge.attrs The list of edge attributes in the pathway graph
+#' @param g The pathway graph of graphNEL class
+#' @param edge.attrs The list of edge attributes in the pathway graph
 #'
-#'@details This function will turn gene -> gene interactions that occur via a compound node into gene -> compound -> gene interactions.
+#' @details This function will turn gene -> gene interactions that occur via a compound node into gene -> compound -> gene interactions.
+#' @export
 process.compounds <- function(g, edge.attrs) {
 
   compoundRelations = vector(mode="character") #Relations to be removed
@@ -611,8 +655,9 @@ process.compounds <- function(g, edge.attrs) {
 #' Guess wrong directed binding interactions and reverse them
 #' @param g The graph object of graphNEL class
 #' @param edge.attrs The list of edge attributes in the graph
-#'
+#' @import graph
 #' @return g The modified graph
+#' @export
 correctEdgeDirections <- function(g, edge.attrs) {
   #If relations are from higher Id to lower, leave it as it is.
   # Otherwise, check, if the second node lies lefter of higher than the first one, reverse the edge.
@@ -623,7 +668,10 @@ correctEdgeDirections <- function(g, edge.attrs) {
           graph::edgeData(g, snode, tnode, edge.attrs$subtype2) == "binding")
         if (as.numeric(snode) < as.numeric(tnode)){
           if (isReverseDirection(snode, tnode, g)) {
-            g = reverseEdges.add(snode, tnode, g, edge.attrs)
+            ## can't find the specified function replaced with reverseEdge
+            # g = reverseEdges.add(snode, tnode, g, edge.attrs)
+            g = reverseEdge(snode, tnode, g, edge.attrs)
+            
             # cat("Binding interaction directions: Edge ", snode, ":", tnode, " was reversed.\n")
           }
         }
@@ -634,21 +682,38 @@ correctEdgeDirections <- function(g, edge.attrs) {
 
 }
 
+#' This function predicts if the edge diractions are wrong based on graphical position of the KEGG nodes
+#' 
+#' @param snode parent node id
+#' @param tnode child node id
+#' @param g a graphNEL graph
+#' @return TRUE or FALSE
+#' 
+#' @export
 isReverseDirection <- function(snode, tnode, g) {
   sx = graph::nodeData(g, snode, "kegg.x")
   sy = graph::nodeData(g, snode, "kegg.y")
   tx = graph::nodeData(g, tnode, "kegg.x")
-  ty = graph::nodeData(g, snode, "kegg.y")
+  ty = graph::nodeData(g, tnode, "kegg.y")
   if (sx - tx != 0)
     return(sx > tx)
   else
     return(sy > ty)
 }
 
+#' Reverse edge direction 
+#' @param snode parent node id
+#' @param tnode child node id
+#' @param g graphNEL grap
+#' @param edge.attrs edge attributes
+#' @export
 reverseEdge <- function(snode, tnode, g, edge.attrs) {
   return(redirectEdge(snode, tnode, tnode, snode, g, edge.attrs))
 }
 
+#' Remove nodes which do not have any interactions with other nodes
+#' @param g graphNEL graph
+#' @export
 remove.disconnected.nodes <- function(g){
   edges = graph::edges(g)
   connected.nodes = vector()
@@ -674,9 +739,11 @@ remove.disconnected.nodes <- function(g){
 #' 
 #' @param g graphNEL graph
 #' @param sink.nodes to be documented
-#' @import igraph
-#' 
-plot.pathway <- function(g, sink.nodes = NULL){
+#' @param ...	Arguments to be passed to methods, such as graphical parameters (see par).
+#' @importFrom "igraph" "igraph.from.graphNEL"
+#' @importFrom "igraph" "V"
+#' @export
+plot_pathway <- function(g, sink.nodes = NULL, ...){
   igr = igraph::igraph.from.graphNEL(g)
   node.labels = graph::nodeData(g, graph::nodes(g), "label")
   igraph::V(igr)$name = node.labels
@@ -711,10 +778,15 @@ plot.pathway <- function(g, sink.nodes = NULL){
   }
 
   igraph::tkplot(igr, vertex.shape = igraph::V(igr)$vertex.shape)
-  plot(igr, vertex.shape = igraph::V(igr)$shape)
+  plot(igr, vertex.shape = igraph::V(igr)$shape, ...)
 
 }
 
+#' Download kegg pathways of provided pathway id list from keggrest and generate kegg collection
+#' @param pathway.id.list charachter vector of pathway ids (hsa04151)
+#' @param out.dir path to the directory where kgmls will be downloded
+#' @param sink.nodes determin sink nodes, logical TRUE or FALSE
+#' @export
 generate.kegg.collection <- function(pathway.id.list, out.dir, sink.nodes = T){
   kegg.collection = list()
   for(id in pathway.id.list){
@@ -723,7 +795,7 @@ generate.kegg.collection <- function(pathway.id.list, out.dir, sink.nodes = T){
 
     if(!is.null(kgml) && file.exists(kgml)){
       pathway.attrs = get.pathway.attrs(kgml)
-      g = parse.KGML(kgml)
+      g = parse.KGML(kgml)$g
       order = order.nodes(g)
       title = pathway.attrs$title
       kegg.collection[[title]] = list(graph=g, order=order, attrs=pathway.attrs)
@@ -736,6 +808,10 @@ generate.kegg.collection <- function(pathway.id.list, out.dir, sink.nodes = T){
   return(kegg.collection)
 }
 
+#' Generate kegg collection from kgml files
+#' @param kgml.files chrachter vector of kgml paths
+#' @param sink.nodes determin sink nodes, logical TRUE or FALSE
+#' @export
 generate.kegg.collection.from.kgml <- function(kgml.files, sink.nodes = T){
   kegg.collection = list()
   for(kgml in kgml.files){
@@ -743,10 +819,20 @@ generate.kegg.collection.from.kgml <- function(kgml.files, sink.nodes = T){
 
     if(!is.null(kgml) && file.exists(kgml)){
       pathway.attrs = get.pathway.attrs(kgml)
-      g = parse.KGML(kgml)
+      parsed_kgml <- parse.KGML(kgml)
+      g = parsed_kgml$g
       order = order.nodes(g)
-      title = pathway.attrs$title
-      kegg.collection[[title]] = list(graph=g, order=order, attrs=pathway.attrs)
+      
+      ##
+      title <- gsub("(", "", pathway.attrs$title, fixed = T)
+      title <- gsub(")", "", title, fixed = T)
+      title <- gsub("-", "_", title)
+      title <- gsub(" ", "_", title)
+      title <- gsub("___", "_", title)
+      
+      # group_nodes <- get_group_node_graphics(kgml)
+      
+      kegg.collection[[title]] = list(graph=g, order=order, group_nodes = parsed_kgml$group_nodes, attrs=pathway.attrs)
     }
     cat("parsed: " , kgml, "\n")
   }
@@ -756,6 +842,9 @@ generate.kegg.collection.from.kgml <- function(kgml.files, sink.nodes = T){
   return(kegg.collection)
 }
 
+
+#' @import biomaRt
+#' @importFrom "stats" "na.omit"
 convert.ids.in.kegg.collection <- function(kegg.collection){
   ### ensembl.id.conversion ###
 
@@ -797,12 +886,68 @@ convert.ids.in.kegg.collection <- function(kegg.collection){
   return(kegg.collection)
 }
 
+#' Order graph node
+#' @param g graphNEL graph
+#' @export
 order.nodes <- function(g){
   g = Rgraphviz::layoutGraph(g)
   nodeY <-graph::nodeRenderInfo(g)$nodeY
-  node.rank <-base::rank(nodeY, ties.method="min")
+  node.rank <- base::rank(nodeY, ties.method="min")
   node.order <- base::sort(node.rank,decreasing=T)
   order = list("node.order" = node.order, "node.rank" = node.rank)
   return(order)
 }
 
+#' Export data frame from graphNEL graph for edge data and its attributes
+#' @param g graphNEL graph
+#' @export
+#' @importFrom "igraph" "get.edgelist"
+#' @importFrom "igraph" "igraph.from.graphNEL"
+#' @importFrom "igraph" "get.edge.attribute"
+#' @import graph
+#' @author Siras Hakobyan
+edge_data_frame_from_graph <- function(g) {
+  
+  edge_table <- cbind(as.data.frame(get.edgelist(igraph.from.graphNEL(g)), stringsAsFactors = F),
+                      as.data.frame(get.edge.attribute(igraph.from.graphNEL(g)),stringsAsFactors = F)
+                )
+  
+  colnames(edge_table)[1:2] <- c("from", "to")
+  
+  node_genes <- unname(sapply(c(edge_table$from, edge_table$to), function(y) {
+    ifelse(is.null(unlist(nodeData(g, y, attr = "genes"))),
+           paste0(as.character(unlist(nodeData(g, y, attr = "label"))), " (",
+                  unlist(strsplit(kegg_compounds_to_full_name[as.character(unlist(nodeData(g, y, attr = "label"))),], split = ";"))[1],
+                  ")"
+           ),
+           paste0(
+             paste0(as.character(unlist(nodeData(g, y, attr = "genes"))), 
+                    paste0("(", entrez_to_symbol[as.character(unlist(nodeData(g, y, attr = "genes"))),], ")")),
+             collapse = ", "
+           )
+    )
+    
+  }))
+  
+  edge_table <- data.frame(edge_table[,1:2], 
+                           from_genes = node_genes[1:nrow(edge_table)],
+                           to_genes = node_genes[nrow(edge_table)+1:length(node_genes)],
+                           edge_table[,3:ncol(edge_table)], stringsAsFactors = F
+                           )
+  
+  return(edge_table)
+}
+
+#' Import edge weights extracted(further edited) via edge_data_frame_from_graph function
+#' @param edge_weights vector with edge weigths with the order of edge_table generated by edge_data_frame_from_graph function
+#' @param g graphNEL graph which will be updated
+#' @export
+#' @import graph
+#' @author Siras Hakobyan
+update_edge_weights <- function(edge_weights,g) {
+  
+  edgeData(g, attr = "weight") <- edge_weights
+  
+  return(g)
+  
+}

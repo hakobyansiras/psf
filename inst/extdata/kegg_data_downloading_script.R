@@ -1,6 +1,7 @@
+## reading manually selected pathway list
 selected_pathway_set <- read.delim(file = "/home/siras/PSFC/inst/extdata/kgmls/selected_pathways.txt", sep = "\t", stringsAsFactors = F)
 
-
+## building keggres links data frame for downloading
 selected_pathway_set <- data.frame(pathway_code = selected_pathway_set$pathway_code,
                                    kgml_link = paste0("http://rest.kegg.jp/get/", selected_pathway_set$pathway_code, "/kgml"),
                                    png_link = paste0("http://rest.kegg.jp/get/", selected_pathway_set$pathway_code, "/image"),
@@ -8,6 +9,7 @@ selected_pathway_set <- data.frame(pathway_code = selected_pathway_set$pathway_c
                                    )
 
 
+## downloading kgmls and png images
 setwd("/home/siras/PSFC/inst/extdata/kgmls")
 apply(selected_pathway_set, 1, function(x) {
   
@@ -26,4 +28,74 @@ apply(selected_pathway_set, 1, function(x) {
 setwd("/home/siras/PSFC/")
 
 
-psf::generate.kegg.collection.from.kgml()
+## parsing kgml files into kegg collecgtion for psf
+library(psf)
+
+kegg_collection_new <- generate.kegg.collection.from.kgml(list.files("inst/extdata/kgmls/", full.names = T), sink.nodes = T)
+
+## downlading and parsing group nodes for visualization
+
+## Henry function
+library(KEGGgraph)
+library(XML)
+pathway.kgml = "inst/extdata/kgmls/hsa04151.kgml"
+
+get_group_graphics <- function(pathway.kgml) {
+  
+  pathway.doc <- try({ xmlTreeParse(pathway.kgml, getDTD = FALSE) }, silent=T )
+  if( class(pathway.doc)=="try-error" ) return(NULL)
+  
+  pathway.doc.r <- xmlRoot(pathway.doc)
+  isEntry <- sapply(xmlChildren(pathway.doc.r), xmlName) == "entry"
+  
+  # attrs <- xmlAttrs(pathway.doc.r)
+  # kegg.pathwayinfo <- list(name = attrs[["name"]], title = attrs[["title"]] )
+  
+  entry=pathway.doc.r[isEntry][[10]]
+  kegg.node.info <- lapply( pathway.doc.r[isEntry], function(entry)
+  {
+    attrs <- xmlAttrs(entry)
+    entryID <- getNamedElement(attrs,"id")
+    name <- getNamedElement(attrs,"name") # unname(unlist(strsplit(attrs["name"], " ")))
+    type <- getNamedElement(attrs,"type")
+    
+    attrs <- xmlAttrs(xmlChildren(entry)$graphics)
+    
+    label <- strsplit(getNamedElement(attrs,"name"),", ")[[1]][1]
+    label[is.na(label)] = ""
+    label <- gsub("[.][.][.]", "", label)
+    
+    graphics <- list( name = getNamedElement(attrs,"name"), 
+                      label = label,
+                      x = as.integer(getNamedElement(attrs,"x")), 
+                      y = as.integer(getNamedElement(attrs,"y")),  
+                      type = getNamedElement(attrs,"type"), 
+                      width = as.integer(getNamedElement(attrs,"width")),
+                      height = as.integer(getNamedElement(attrs,"height")),        
+                      fgcolor = getNamedElement(attrs,"fgcolor"),
+                      bgcolor = getNamedElement(attrs,"bgcolor"))
+    
+    list(entryID = entryID, name = name, type = type, graphics = graphics)
+  } )
+  names(kegg.node.info) = paste( sapply(kegg.node.info,"[[", "name" ), sapply(kegg.node.info, function(x) x$graphics$x ), sapply(kegg.node.info, function(x) x$graphics$y ) )
+  
+  
+  kegg.node.info <- kegg.node.info[grep("undefined", names(kegg.node.info))]
+  
+  return(kegg.node.info)
+}
+
+group_graphics <- lapply(list.files("inst/extdata/kgmls/", full.names = T), get_group_graphics)
+
+names(group_graphics) <- names(kegg_collection_new)
+
+
+save(kegg_collection_new, kegg_compounds_to_full_name, entrez_to_symbol, file = "inst/extdata/kegg_collection_new.RData")
+
+## adding group node information to curated pathway collection
+for(i in names(edited_pathways_new)){
+  edited_pathways_new[[i]]$group_nodes <- kegg_collection_new[[i]]$group_nodes
+}
+
+save(edited_pathways_new, kegg_compounds_to_full_name, entrez_to_symbol, file = "inst/extdata/edited_pathways_new.RData")
+

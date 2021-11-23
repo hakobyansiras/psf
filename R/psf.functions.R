@@ -3,6 +3,7 @@ concatenate.summonds <- function(summonds){
   sum = paste(summonds, collapse="+")
 }
 
+
 psf.flow <- function(g, node.ordering, sink.nodes, split = TRUE, sum = FALSE) {
 
   #   show(i)
@@ -169,6 +170,7 @@ psf.flow <- function(g, node.ordering, sink.nodes, split = TRUE, sum = FALSE) {
               "eval.exprs" = eval.exprs, "I" = I, "E" = E))
 }
 
+
 compute.eval.exprs <- function(eval.exprs, E, I, sink.nodes){
 
   #   start.time = Sys.time()
@@ -183,6 +185,7 @@ compute.eval.exprs <- function(eval.exprs, E, I, sink.nodes){
   return(signal.at.sink)
 }
 
+
 compute.symb.exprs <- function(symb.exprs, E, I, sink.nodes){
   #   start.time = Sys.time()
   signal.at.sink = list()
@@ -196,6 +199,7 @@ compute.symb.exprs <- function(symb.exprs, E, I, sink.nodes){
   #   time.eval = end.time - start.time
   return(unlist(signal.at.sink))
 }
+
 
 psf.flow.boot <- function(g, FC.matrix, node.ordering, eval.exprs, sink.nodes, I, bst.steps = 200) {
   node.order <- node.ordering$node.order
@@ -237,6 +241,7 @@ psf.flow.boot <- function(g, FC.matrix, node.ordering, eval.exprs, sink.nodes, I
   }
   return(boot.mat)
 }
+
 
 sig.calc <- function(signal.at.sink, boot.mat) {
   sig = vector(mode = "numeric", length(signal.at.sink))

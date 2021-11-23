@@ -11,6 +11,6 @@
 #' 
 #' @concept psf
 #' @export
-run_shiny_app <- function (port=3838) {
+run_shiny_app <- function(port=3838) {
   shiny::runApp(system.file('shinyApp', package='psf'), port=port)	
 }

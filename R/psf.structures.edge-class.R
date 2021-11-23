@@ -1,5 +1,3 @@
-#'
-#'
 Edge <- setClass(
   Class = "Edge",
 

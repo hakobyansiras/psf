@@ -1,3 +1,7 @@
+#' provide outgoing edges of the specified node
+#' @param g graphNEL graph
+#' @param from node id
+#' @export
 out.edges <- function(g, from){
   if(!(from %in% g@nodes)){
     cat("no node ", from, " in the graph\n")
@@ -10,6 +14,11 @@ out.edges <- function(g, from){
   return(edges)
 }
 
+#' Check if the edge exists in the graph
+#' @param g graphNEl graph
+#' @param from parent node id
+#' @param to child node id
+#' @export
 edge.exists <- function(g, from, to){
   if(!(from %in% g@nodes)){
     cat("no node ", from, " in the graph\n")
@@ -23,7 +32,11 @@ edge.exists <- function(g, from, to){
   return(length(ind) > 0)
 }
 
-
+#' Returns the general edge type (either activation or inhibition)
+#' @param g graphNEl graph
+#' @param from parent node id
+#' @param to child node id
+#' @export
 get.edge.type <- function(g, from, to){
 
   edge.name = paste(from,to,sep = "|")

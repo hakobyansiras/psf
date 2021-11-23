@@ -10,7 +10,7 @@ License: file LICENSE
 LazyData: true
 biocViews:
 Imports: 
-        KEGGREST, 
+        KEGGREST,
         graph, 
         Rgraphviz, 
         XML, 
@@ -27,6 +27,7 @@ Imports:
         visNetwork,
         shinyjqui,
         ggplot2,
+        gplots,
         shinyWidgets,
         shinycssloaders
 Depends:
@@ -35,13 +36,13 @@ Collate: 'kegg.functions.R' 'pathnet.functions.R'
          'psf.functions.R' 'psf.opossom.R' 'psf.structures.node-class.R'
          'psf.structures.edge-class.R'
          'psf.structures.node-getValue-method.R' 'scriptlog.R'
-         'psf.report.sheets.R' 'plot.pathway.henry.R'
-         'psf.graph.functions.R' 'run_interactive_app.R'
+         'psf.report.sheets.R'
+         'psf.graph.functions.R' 'run_interactive_app.R' 
+         'kegg_graphics_functions.R' 'psf_calculation_and_coloring.R' 'psf_report_generator.R'
 Suggests:
     knitr, 
     testthat,
     rmarkdown
-NeedsCompilation: no
 URL: https://github.com/hakobyansiras/PSFC
 VignetteBuilder: knitr
 RoxygenNote: 7.1.1
