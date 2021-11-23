@@ -254,6 +254,11 @@ parse.KGML <- function(kgml){
       
       ## keeping group nodes for visualization
       group_nodes[node] <- graph::nodeData(g, node)
+      group_nodes[[node]]$kegg.gr.x <- as.integer(group_nodes[[node]]$kegg.gr.x)
+      group_nodes[[node]]$kegg.gr.y <- as.integer(group_nodes[[node]]$kegg.gr.y)
+      group_nodes[[node]]$kegg.gr.width <- as.integer(group_nodes[[node]]$kegg.gr.width)
+      group_nodes[[node]]$kegg.gr.height <- as.integer(group_nodes[[node]]$kegg.gr.height)
+      
       g = graph::removeNode(node, g)
       # cat("Group node processed: ", node, "\n")
     }
