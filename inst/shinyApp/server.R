@@ -1583,25 +1583,25 @@ shinyServer(function(input, output, session) {
     
     v$image_file <- kegg_node_mapper(group_graphics = v$pathway_data$group_graphics, kegg_pathway_graphics = v$graphical_data, pathway_name = v$pathway_name, pathway_image = v$pathway_image, color.genes = v$psf_and_colors$psf_colors, color_bar_psf_mode = v$color_bar_psf_mode, col_legend_title = v$col_legend_title, color_bar_lims = v$color_bar_lims, draw_color_bar = v$draw_color_bar)
     
-    
-    sink_plot <- ggplot(v$psf_and_colors$sink_signals, aes(x=sink_name, y=signal, fill=signal)) +
-      geom_boxplot(color="black", lwd=0.2, outlier.shape=NA) +
-      geom_point(color = v$psf_and_colors$sink_signals$dot_color) +
-      geom_jitter(color = v$psf_and_colors$sink_signals$dot_color, width = 0.2) +
-      guides(fill=FALSE) +
-      coord_flip() +
-      theme_bw()
-    
-    ggsave("sink_boxplot.png", plot = sink_plot, device = "png", path = NULL,
-           scale = 1, width = 400, height = magick::image_info(v$image_file)$height, units = "px",
-           dpi = 96, limitsize = TRUE)
-    
-    gg_plot_img <- image_read('sink_boxplot.png')
-    
-    file.remove('sink_boxplot.png')
-      
-    image_append(c(v$image_file, gg_plot_img)) %>%
-      image_write(tempfile(fileext='png'), format = 'png')  
+    ### temorarely commented boxplot of psf values
+    # sink_plot <- ggplot(v$psf_and_colors$sink_signals, aes(x=sink_name, y=signal, fill=signal)) +
+    #   geom_boxplot(color="black", lwd=0.2, outlier.shape=NA) +
+    #   geom_point(color = v$psf_and_colors$sink_signals$dot_color) +
+    #   geom_jitter(color = v$psf_and_colors$sink_signals$dot_color, width = 0.2) +
+    #   guides(fill=FALSE) +
+    #   coord_flip() +
+    #   theme_bw()
+    # 
+    # ggsave("sink_boxplot.png", plot = sink_plot, device = "png", path = NULL,
+    #        scale = 1, width = 400, height = magick::image_info(v$image_file)$height, units = "px",
+    #        dpi = 96, limitsize = TRUE)
+    # 
+    # gg_plot_img <- image_read('sink_boxplot.png')
+    # 
+    # file.remove('sink_boxplot.png')
+    #   
+    # image_append(c(v$image_file, gg_plot_img)) %>%
+    #   image_write(tempfile(fileext='png'), format = 'png')  
     
     v$visnet_list <- visnet_creator(v$graphical_data, node_colors = v$psf_and_colors$psf_colors)
     
@@ -1647,15 +1647,16 @@ shinyServer(function(input, output, session) {
     
     v$visnet_list <- visnet_creator(v$graphical_data, node_colors = v$psf_and_colors$psf_colors)
     
-    sink_gg_plot <- ggplot(v$psf_and_colors$sink_signals, aes(x=sink_name, y=signal, fill=signal)) +
-      geom_boxplot(color="black", lwd=0.2, outlier.shape=NA) +
-      geom_point(color = v$psf_and_colors$sink_signals$dot_color) +
-      geom_jitter(color = v$psf_and_colors$sink_signals$dot_color, width = 0.2) +
-      guides(fill=FALSE) +
-      coord_flip() +
-      theme_bw()
-    
-    v$sink_values_plot <- ggplotly(sink_gg_plot, width = 400, height = magick::image_info(v$pathway_image)$height)
+    ### temporarely commented ggplot of sink values
+    # sink_gg_plot <- ggplot(v$psf_and_colors$sink_signals, aes(x=sink_name, y=signal, fill=signal)) +
+    #   geom_boxplot(color="black", lwd=0.2, outlier.shape=NA) +
+    #   geom_point(color = v$psf_and_colors$sink_signals$dot_color) +
+    #   geom_jitter(color = v$psf_and_colors$sink_signals$dot_color, width = 0.2) +
+    #   guides(fill=FALSE) +
+    #   coord_flip() +
+    #   theme_bw()
+    # 
+    # v$sink_values_plot <- ggplotly(sink_gg_plot, width = 400, height = magick::image_info(v$pathway_image)$height)
     
   })
   
