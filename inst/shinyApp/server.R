@@ -868,10 +868,10 @@ shinyServer(function(input, output, session) {
                                                         input$image_hover[[2]] <= v$graphical_data$node_coords$y_end & input$image_hover[[2]] >= v$graphical_data$node_coords$y_start),8]
         
         if(v$pathway_exp_colored) {
-          paste0(gr_name , " | ", "FC = ", round(v$psf_and_colors$exp_values[node_id], digits = 3))
+          paste0(gr_name , " | ", "Log FC = ", round(v$psf_and_colors$exp_values[node_id], digits = 3))
         } else {
           if(v$pathway_psf_colored) {
-            paste0(gr_name , " | ", "FC = ", round(v$psf_and_colors$exp_values[node_id], digits = 3), " Signal = ", round(v$psf_and_colors$signal_values[node_id], digits = 3))
+            paste0(gr_name , " | ", "Log FC = ", round(v$psf_and_colors$exp_values[node_id], digits = 3), " log Signal = ", round(v$psf_and_colors$signal_values[node_id], digits = 3))
           }
         }
       } else {
@@ -1499,8 +1499,6 @@ shinyServer(function(input, output, session) {
       if(isTRUE(tryCatch( { psf_signal_calculator_and_coloring(entrez_fc = v$entrez_fc, pathway = v$pathway, pathway_name = v$pathway_name, update_mod = FALSE) }
                           , error = function(e1) {TRUE}))) {
         
-        psf_signal_calculator_and_coloring(entrez_fc = v$entrez_fc, pathway = v$pathway, pathway_name = v$pathway_name, update_mod = FALSE)
-        
         output$fc_table_load_error <- renderText({paste("<font color=\"#ff0000\"><b>", "Something is wrong with a file", "</b></font>")})
         hide('vis_buttons')
         v$allow_graph_param_update <- FALSE
@@ -1581,7 +1579,8 @@ shinyServer(function(input, output, session) {
     v$color_bar_psf_mode <- TRUE
     
     
-    v$image_file <- kegg_node_mapper(group_graphics = v$pathway_data$group_graphics, kegg_pathway_graphics = v$graphical_data, pathway_name = v$pathway_name, pathway_image = v$pathway_image, color.genes = v$psf_and_colors$psf_colors, color_bar_psf_mode = v$color_bar_psf_mode, col_legend_title = v$col_legend_title, color_bar_lims = v$color_bar_lims, draw_color_bar = v$draw_color_bar)
+    v$image_file <- kegg_node_mapper(group_graphics = v$pathway_data$group_graphics, kegg_pathway_graphics = v$graphical_data, pathway_name = v$pathway_name, pathway_image = v$pathway_image, color.genes = v$psf_and_colors$psf_colors, color_bar_psf_mode = v$color_bar_psf_mode, col_legend_title = v$col_legend_title, color_bar_lims = v$color_bar_lims, draw_color_bar = v$draw_color_bar) %>%
+      image_write(tempfile(fileext='png'), format = 'png')
     
     ### temorarely commented boxplot of psf values
     # sink_plot <- ggplot(v$psf_and_colors$sink_signals, aes(x=sink_name, y=signal, fill=signal)) +
