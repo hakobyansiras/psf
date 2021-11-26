@@ -4,7 +4,7 @@ concatenate.summonds <- function(summonds){
 }
 
 
-psf.flow <- function(g, node.ordering, sink.nodes, split = TRUE, sum = FALSE) {
+psf.flow <- function(g, node.ordering, sink.nodes, split = TRUE, sum = FALSE, mult_normalization = FALSE) {
 
   #   show(i)
   #   k = 0
@@ -78,8 +78,17 @@ psf.flow <- function(g, node.ordering, sink.nodes, split = TRUE, sum = FALSE) {
             node.signal <- sum((proportion*weight*node.exp)*(in.signal^impact)) #esi
             # cat("\n node.exp:", node.exp,"node.signal", node.signal, "\n")
             # node.signal <- sum((proportion*node.exp)*(in.signal*impact))
+            
+            #### special formula for signal exponential decay, not used yet ####
+            # a = 2000
+            # proportion = in.signal/sum(in.signal)
+            # node.signal <- sum((proportion * weight * node.exp) *  a*(2/(1+exp((-2*in.signal^impact)/a)) - 1))
+            
           } else {
             #Returns the product of signals without splitting - is for updateing, but applies only in this special case where all the rules are s*t, or 1/s*t
+            ##
+            ### does this condition similar with self actiavtion? if yes than it should be applied only for those genes which have such a feature.
+            ##
             proportion = 1
             node.signal <- node.exp*(weight*in.signal^impact)
             names(node.signal) <- NULL

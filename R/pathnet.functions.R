@@ -27,9 +27,9 @@ map.gene.data <- function(g, entrez.fc){
     x$expression <- expression
     return(x)
   }, entrez.fc)
-
+### added transition_gene to expression mapping(transition nodes will have default 1 expression)
   for(i in 1:length(gene.data)){
-    if(gene.data[[i]]$type == "gene")
+    if(gene.data[[i]]$type %in% c("gene", "transition_gene"))
       graph::nodeData(g, names(gene.data)[i], "expression") =  gene.data[[i]]$expression
   }
   return(g)
@@ -93,8 +93,9 @@ psf.from.env.indata <- function(indata.fc){
 #' @param calculate.significance logical, if true then function will also calculate significance for the PSF values by shuffling all the network nodes in checking if the resulted PSF values were calculated by chance
 #' @param bst.steps integer, the number of the interations for shuffling and recalculating PSF values for the significance analysis
 #' @param sum logical, default value is FALSE. When set to true pathway activity will be caculated via addition, when set to false then activity willbe calculated via multiplication
+#' @param map_exp_data logical, default value is TRUE. When set to false the expression data will not be mapped into pathway nodes and pathway node expression values will be used instead.
 #' @export
-psf.from.env.entrez.fc <- function(entrez.fc, kegg.collection, split = TRUE, calculate.significance = T, bst.steps = 200, sum = FALSE){
+psf.from.env.entrez.fc <- function(entrez.fc, kegg.collection, split = TRUE, calculate.significance = T, bst.steps = 200, sum = FALSE, map_exp_data = TRUE){
   psf.results.collection = list()
   psf.results.collections = list()
   for(c in 1:ncol(entrez.fc)){
@@ -106,7 +107,15 @@ psf.from.env.entrez.fc <- function(entrez.fc, kegg.collection, split = TRUE, cal
       if(!length(kegg.collection[[i]])==0){
         # cat("PSF computation on: ", pathway, "\n")
         entrez.column = as.matrix(entrez.fc[,c])
-        g = map.gene.data(kegg.collection[[i]]$graph, entrez.column)
+        if(map_exp_data) {
+          ## reseting pathway signal values
+          graph::nodeData(kegg.collection[[i]]$graph, attr = "signal") <- 1
+          
+          g = map.gene.data(kegg.collection[[i]]$graph, entrez.column)
+        } else {
+          g = kegg.collection[[i]]$graph
+        }
+        
 
         psf.results.collection[[pathway]] = psf.flow(g, kegg.collection[[i]]$order, kegg.collection[[i]]$sink.nodes, split, sum = sum)
 

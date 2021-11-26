@@ -577,11 +577,11 @@ color_code <- function(values, pal1, pal2) {
 psf_signal_calculator_and_coloring <- function(entrez_fc, pathway, pathway_name, update_mod = FALSE, old_graph = NULL, no_color_mode = F) {
   
   if(update_mod) {
-    psf_graph <- psf_flow_update(entrez.fc = entrez_fc,
-                                 kegg.collection = old_graph[[1]][pathway_name], calculate.significance = F, sum = FALSE)
+    psf_graph <- psf.from.env.entrez.fc(entrez.fc = entrez_fc,
+                                 kegg.collection = old_graph[[1]][pathway_name], calculate.significance = F, sum = FALSE, map_exp_data = FALSE)
     
   } else {
-    psf_graph <- psf.from.env.entrez.fc_new(entrez.fc = entrez_fc,
+    psf_graph <- psf.from.env.entrez.fc(entrez.fc = entrez_fc,
                                         kegg.collection = setNames(object = list(pathway), nm = pathway_name), 
                                         calculate.significance = F, sum = FALSE)
   }
@@ -1475,10 +1475,11 @@ shinyServer(function(input, output, session) {
   
   #### expression upload ####
   observeEvent(input$file, {
+  
     
     if(isTRUE(tryCatch( { as.matrix(suppressWarnings(fread(input$file$datapath, stringsAsFactors = F))) }
                  , error = function(e) {TRUE}))) {
-      
+        
       output$fc_table_load_error <- renderText({paste("<font color=\"#ff0000\"><b>", "Something is wrong with a file", "</b></font>")})
       hide('vis_buttons')
       v$allow_graph_param_update <- FALSE
@@ -1491,12 +1492,14 @@ shinyServer(function(input, output, session) {
       
       v$entrez_fc <- v$exp_uploaded[,-1, drop = F]
       
-      print(v$entrez_fc)
+      # print(v$entrez_fc)
       
       # psf_signal_calculator_and_coloring(entrez_fc = v$entrez_fc, pathway = v$pathway, pathway_name = v$pathway_name, update_mod = FALSE)
       
       if(isTRUE(tryCatch( { psf_signal_calculator_and_coloring(entrez_fc = v$entrez_fc, pathway = v$pathway, pathway_name = v$pathway_name, update_mod = FALSE) }
                           , error = function(e1) {TRUE}))) {
+        
+        psf_signal_calculator_and_coloring(entrez_fc = v$entrez_fc, pathway = v$pathway, pathway_name = v$pathway_name, update_mod = FALSE)
         
         output$fc_table_load_error <- renderText({paste("<font color=\"#ff0000\"><b>", "Something is wrong with a file", "</b></font>")})
         hide('vis_buttons')

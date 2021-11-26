@@ -34,7 +34,7 @@ library(psf)
 kegg_collection_new <- generate.kegg.collection.from.kgml(list.files("inst/extdata/kgmls/", full.names = T), sink.nodes = T)
 
 ## downlading and parsing group nodes for visualization
-
+### not using anymore ###
 ## Henry function
 library(KEGGgraph)
 library(XML)
@@ -96,6 +96,16 @@ save(kegg_collection_new, kegg_compounds_to_full_name, entrez_to_symbol, file = 
 for(i in names(edited_pathways_new)){
   edited_pathways_new[[i]]$group_nodes <- kegg_collection_new[[i]]$group_nodes
 }
+
+## adding new attributes to old curated pathways
+edited_pathways_new <- lapply(edited_pathways_new, function(x) {
+  
+  graph::edgeDataDefaults(x$graph, attr = "weight") <- 1
+  graph::nodeDataDefaults(x$graph, attr = "psf_function") <- "mean"
+  
+  x
+  
+})
 
 save(edited_pathways_new, kegg_compounds_to_full_name, entrez_to_symbol, file = "inst/extdata/edited_pathways_new.RData")
 
