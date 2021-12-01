@@ -588,7 +588,7 @@ psf_signal_calculator_and_coloring <- function(entrez_fc, pathway, pathway_name,
   
   exp_values <- unlist(graph::nodeData(psf_graph[[1]][[pathway_name]]$graph, attr = "expression"))[which(unlist(graph::nodeData(psf_graph[[1]][[pathway_name]]$graph, attr = "type")) == "gene")]
   
-  exp_values <- log(exp_values[order(exp_values)])
+  exp_values <- log(exp_values[order(exp_values)] + 0.00001)
   
   if(no_color_mode) {
     exp_colors <- NULL
@@ -613,7 +613,7 @@ psf_signal_calculator_and_coloring <- function(entrez_fc, pathway, pathway_name,
   
   signal_values <- unlist(graph::nodeData(psf_graph[[1]][[pathway_name]]$graph, attr = "signal"))[which(unlist(graph::nodeData(psf_graph[[1]][[pathway_name]]$graph, attr = "type")) == "gene")]
   
-  signal_values <- log(signal_values[order(signal_values)])
+  signal_values <- log(signal_values[order(signal_values)] + 0.00001)
   
   psf_colors <- color_code(values = signal_values, pal1 = pal1, pal2 = pal2)
   

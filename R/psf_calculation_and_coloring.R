@@ -36,7 +36,7 @@ psf_signal_calculator_and_coloring <- function(entrez_fc, pathway, pathway_name,
     
   }))
   
-  mean_exp_values <- round(log(mean_exp_values[order(mean_exp_values)]), digits = 5)
+  mean_exp_values <- round(log(mean_exp_values[order(mean_exp_values)] + 0.00001), digits = 5)
   
   if(no_color_mode) {
     exp_colors <- NULL
@@ -66,7 +66,7 @@ psf_signal_calculator_and_coloring <- function(entrez_fc, pathway, pathway_name,
     
   })
   
-  signal_values_all <- round(log(signal_values_all), digits = 5)
+  signal_values_all <- round(log(signal_values_all) + 0.00001, digits = 5)
   
   colnames(signal_values_all) <- colnames(entrez_fc)
   
@@ -78,7 +78,7 @@ psf_signal_calculator_and_coloring <- function(entrez_fc, pathway, pathway_name,
   }))
   
   
-  mean_signal_values <- round(log(mean_signal_values[order(mean_signal_values)]), digits = 5)
+  mean_signal_values <- round(log(mean_signal_values[order(mean_signal_values)] + 0.00001), digits = 5)
   
   if(no_color_mode) {
     psf_colors <- NULL
