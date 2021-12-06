@@ -14,7 +14,7 @@ calc_psf_and_generate_report_from_collection <- function(kegg_collection, exp_ma
                                                      pathway = kegg_collection[[x]], 
                                                      pathway_name = x, no_color_mode = F)
     
-    graphical_data <- graphical_data_generator(x)
+    graphical_data <- graphical_data_generator(kegg_collection[[x]])
     
     
     pathway_img_new <- kegg_designer(group_graphics = kegg_collection[[x]]$group_nodes, node_graphics = graphical_data$node_coords, 
