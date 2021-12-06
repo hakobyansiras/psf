@@ -7,7 +7,8 @@
 calc_psf_and_generate_report_from_collection(
   kegg_collection,
   exp_matrix,
-  file_name
+  file_name,
+  use_old_images = F
 )
 }
 \arguments{
@@ -16,6 +17,8 @@ calc_psf_and_generate_report_from_collection(
 \item{exp_matrix}{expression fold change matrix with gene entrez id rownames}
 
 \item{file_name}{name of the pdf report which will be generated}
+
+\item{use_old_images}{use olde kegg images(for use with curated pathway collection)}
 }
 \description{
 Calculates psf for given kegg pathway based on expression matrix and generates pdf report with colored pathways and plots

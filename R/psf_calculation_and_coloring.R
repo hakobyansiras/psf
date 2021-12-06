@@ -29,14 +29,24 @@ psf_signal_calculator_and_coloring <- function(entrez_fc, pathway, pathway_name,
   
   colnames(exp_values_all) <- colnames(entrez_fc)
   
-  ### averaging exp FC values across sample for pathway coloring 
-  mean_exp_values <- rowMeans(sapply(psf_graph, function(x) {
+  if(ncol(entrez_fc) == 1) {
     
-    unlist(graph::nodeData(x[[pathway_name]]$graph, attr = "expression"))[which(unlist(graph::nodeData(x[[pathway_name]]$graph, attr = "type")) == "gene")]
+    mean_exp_values <- round(log(drop(exp_values_all)[order(drop(exp_values_all))] + 0.00001), digits = 5)
     
-  }))
+  } else {
+    
+    ### averaging exp FC values across sample for pathway coloring 
+    mean_exp_values <- rowMeans(sapply(psf_graph, function(x) {
+      
+      unlist(graph::nodeData(x[[pathway_name]]$graph, attr = "expression"))[which(unlist(graph::nodeData(x[[pathway_name]]$graph, attr = "type")) == "gene")]
+      
+    }))
+    
+    mean_exp_values <- round(log(mean_exp_values[order(mean_exp_values)] + 0.00001), digits = 5)
+    
+  }
   
-  mean_exp_values <- round(log(mean_exp_values[order(mean_exp_values)] + 0.00001), digits = 5)
+  
   
   if(no_color_mode) {
     exp_colors <- NULL
@@ -141,11 +151,27 @@ psf_signal_calculator_and_coloring <- function(entrez_fc, pathway, pathway_name,
   
   sink_values_all <- signal_values_all[pathway$sink.nodes,]
   
-  rownames(sink_values_all) <- sink_names
+  if(ncol(entrez_fc) == 1) {
+    
+    sink_values_all <- as.matrix(sink_values_all)
+    
+    rownames(sink_values_all) <- sink_names
+    
+    sink_values_all <- sink_values_all[rev(sink_names[sink_order_by_coord]),, drop = F]
+    
+    rownames(sink_values_all) <- gsub('_([0-9])', "", rownames(sink_values_all))
+    
+  } else {
+    
+    rownames(sink_values_all) <- sink_names
+    
+    sink_values_all <- sink_values_all[rev(sink_names[sink_order_by_coord]),]
+    
+    rownames(sink_values_all) <- gsub('_([0-9])', "", rownames(sink_values_all))
+    
+  }
   
-  sink_values_all <- sink_values_all[rev(sink_names[sink_order_by_coord]),]
   
-  rownames(sink_values_all) <- gsub('_([0-9])', "", rownames(sink_values_all))
   
   return(list(psf_colors = psf_colors, exp_colors = exp_colors, 
               mean_exp_values = mean_exp_values, mean_signal_values = mean_signal_values, 

@@ -169,13 +169,23 @@ kegg_designer <- function(group_graphics, node_graphics, pathway_image,
   dev.off()
   
   if(plot_type == "boxplot") {
-    sink_plot <- ggplot(sink_signals, aes(x=sink_name, y=signal, fill=signal)) +
-      geom_boxplot(color="black", lwd=0.2, outlier.shape=NA) +
-      geom_point(color = sink_signals$dot_color) +
-      geom_jitter(color = sink_signals$dot_color, width = 0.2) +
-      guides(fill=FALSE) +
-      coord_flip() +
-      theme_bw()
+    
+    if(ncol(psf_output$exp_values_all) == 1) {
+      
+      sink_plot <- ggplot(sink_signals, aes(x=sink_name, y=signal)) +
+        geom_bar(color="black", lwd=0.2, stat="identity") +
+        coord_flip() +
+        theme_bw()
+      
+    } else {
+      sink_plot <- ggplot(sink_signals, aes(x=sink_name, y=signal, fill=signal)) +
+        geom_boxplot(color="black", lwd=0.2, outlier.shape=NA) +
+        geom_point(color = sink_signals$dot_color) +
+        geom_jitter(color = sink_signals$dot_color, width = 0.2) +
+        guides(fill=FALSE) +
+        coord_flip() +
+        theme_bw()
+    }
     
     ggsave("sink_plot.png", plot = sink_plot, device = "png", path = NULL,
            scale = 1, width = 400, height = magick::image_info(img)$height, units = "px",
@@ -185,7 +195,7 @@ kegg_designer <- function(group_graphics, node_graphics, pathway_image,
     
     png(filename = "sink_plot.png", width = 400, height = magick::image_info(img)$height, res = 96)
     
-    gplots::heatmap.2(psf_output$sink_values_all, col = c(pal1(10), pal2(10)), 
+    gplots::heatmap.2(psf_output$sink_values_all, col = c(pal1(10), pal2(10)), trace = "none",
                       Rowv = FALSE, Colv = FALSE, 
                       lmat = rbind(c(5,3,4), c(2,1,1)),
                       lhei = c(0.1, 4),
