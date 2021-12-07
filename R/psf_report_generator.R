@@ -19,7 +19,7 @@ calc_psf_and_generate_report_from_collection <- function(kegg_collection, exp_ma
     graphical_data <- graphical_data_generator(kegg_collection[[x]])
     
     if(use_old_images) {
-      img_path <- system.file("extdata", "pathway_imgs_old", paste0(gsub("path:", "", kegg_collection[[x]]$attrs$name), ".png"), package="psf")
+      img_path <- system.file("extdata", "old_imgs", paste0(gsub("path:", "", kegg_collection[[x]]$attrs$name), ".png"), package="psf")
     } else {
       img_path <- system.file("extdata", "pathway_imgs", paste0(gsub("path:", "", kegg_collection[[x]]$attrs$name), ".png"), package="psf")
     }
