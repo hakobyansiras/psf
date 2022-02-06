@@ -75,7 +75,22 @@ psf.flow <- function(g, node.ordering, sink.nodes, split = TRUE, sum = FALSE, mu
             # proportion = 1
             #           node.signal <- (proportion*node.exp)+(in.signal*impact)
             # node.signal <- (node.exp)+sum(in.signal*impact) # no need for proportions in summation - we use this for summinng now
-            node.signal <- sum((proportion*weight*node.exp)*(in.signal^impact)) #esi
+            
+            ### previos wroking version
+            # node.signal <- sum((proportion*weight*node.exp)*(in.signal^impact)) #esi
+            
+            ### removes signals from inhibtion parent nodes beacuse of 0^-1 exception
+            node.signal <- sum(sapply(1:length(in.signal), function(x) {
+              
+              if(in.signal[x] == 0 & impact[x] == -1) {
+                0
+              } else {
+                node.exp*(proportion[x]*weight[x]*in.signal[x]^impact[x])
+              }
+              
+            }))
+            
+            
             # cat("\n node.exp:", node.exp,"node.signal", node.signal, "\n")
             # node.signal <- sum((proportion*node.exp)*(in.signal*impact))
             
@@ -89,9 +104,19 @@ psf.flow <- function(g, node.ordering, sink.nodes, split = TRUE, sum = FALSE, mu
             ##
             ### does this condition similar with self actiavtion? if yes than it should be applied only for those genes which have such a feature.
             ##
+            
             proportion = 1
-            node.signal <- node.exp*(weight*in.signal^impact)
+            
+            if(all(impact == -1)) {
+              node.signal <- node.exp
+            } else {
+              node.signal <- 0
+            }
+            
+            # node.signal <- sum(node.exp*(weight*in.signal^impact))
             names(node.signal) <- NULL
+            
+            
             # cat(paste("beging: node",i, "signal:", in.signal, "\n"))
           }
         } else {

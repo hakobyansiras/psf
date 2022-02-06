@@ -9,7 +9,7 @@ plot_pathway(g, sink.nodes = NULL, ...)
 \arguments{
 \item{g}{graphNEL graph}
 
-\item{sink.nodes}{to be documented}
+\item{sink.nodes}{list of sink node ids which will be colored in red}
 
 \item{...}{Arguments to be passed to methods, such as graphical parameters (see par).}
 }

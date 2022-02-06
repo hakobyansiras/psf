@@ -189,17 +189,18 @@ shinyUI(
              style="background-color: #f2f2f2; height: 600px; width: 250px;",
              
              div(style="display: inline-block;vertical-align:top;",
-                 dropdown(label = "Load from KEGG",
-                          div(style="display: inline-block;vertical-align:top; width: 210px;", selectizeInput("selected_pathway", label = NULL, choices = "Chemokine_signaling_pathway", selected = "Chemokine_signaling_pathway")),
-                          actionButton("load_pathway", label = "Load")
+                 dropdown(label = "Load pathway",
+                          div(style="display: inline-block;vertical-align:top; width: 210px;", selectizeInput("selected_pathway", label = "Load from kegg", choices = "Chemokine_signaling_pathway", selected = "Chemokine_signaling_pathway")),
+                          actionButton("load_pathway", label = "Load"),
+                          div(style="display: inline-block;vertical-align:top;", fileInput("kegg_data", label = "Load from RData file"))
                  )
              ),
-             div(style="display: inline-block;vertical-align:top; width: 210px;",
-                 dropdown(label = "Load from file",
-                          div(style="display: inline-block;vertical-align:top;", fileInput("kegg_data", label = h3("Load RData file")))
-                 )
-             ),
-             
+             # div(style="display: inline-block;vertical-align:top; width: 210px;",
+             #     dropdown(label = "Load from file",
+             #              div(style="display: inline-block;vertical-align:top;", fileInput("kegg_data", label = h3("Load RData file")))
+             #     )
+             # ),
+             br(),
              div(style="display: inline-block;vertical-align:top; width: 210px;", 
                  selectizeInput("app_mode", label = "App mode", choices = c("Curation", "Vis"), selected = "Curation")
                  ),
@@ -216,7 +217,7 @@ shinyUI(
                div(style="display: inline-block;vertical-align:top; width: 210px;",
                    dropdown(label = "Download",
                             div(downloadButton("download_table", label = "Download pathway", style='display: block; margin: auto;')),
-                            div(downloadButton("download_pathway", label = "Save work", style='display: block; margin: auto;'))
+                            div(downloadButton("download_pathway", label = "Save pathway", style='display: block; margin: auto;'))
                    )
                ),
                # div(style="display: inline-block;vertical-align:top;width: 80px;", checkboxInput("psf_mode", label = "PSF test", value = FALSE)),

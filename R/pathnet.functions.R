@@ -6,6 +6,19 @@
 #' @return graphNEL object with the column-wise averaged gene data kept in the nodedata attribute of the graph
 #' @export
 map.gene.data <- function(g, entrez.fc){
+  
+  if(class(entrez.fc) != "matrix") {
+    stop(paste0("ERROR: Provided expression data is in", class(entrez.fc), "class, provide expression matrix in matrix class"))
+  }
+  
+  if(any(is.na(entrez.fc))) {
+    stop("ERROR: expression matrix contain NA values")
+  }
+  
+  if(any(entrez.fc == 0)) {
+    stop("ERROR: expression matrix contain 0 values, make sure to provide expression fold change values")
+  }
+  
   gene.data <- graph::nodeData(g)
   gene.data <- lapply(gene.data, function (x,y) {
     genes.in.node = which(rownames(y) %in% x$genes)
@@ -29,8 +42,11 @@ map.gene.data <- function(g, entrez.fc){
   }, entrez.fc)
 ### added transition_gene to expression mapping(transition nodes will have default 1 expression)
   for(i in 1:length(gene.data)){
-    if(gene.data[[i]]$type %in% c("gene", "transition_gene"))
+    if(gene.data[[i]]$type %in% c("gene", "transition_gene")) {
       graph::nodeData(g, names(gene.data)[i], "expression") =  gene.data[[i]]$expression
+    } else {
+      graph::nodeData(g, names(gene.data)[i], "expression") =  1
+    }
   }
   return(g)
 }

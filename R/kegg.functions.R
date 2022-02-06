@@ -743,7 +743,7 @@ remove.disconnected.nodes <- function(g){
 #' Plots the pathway with KEGG layout based on x and y coordinates taken from KGML file.
 #' 
 #' @param g graphNEL graph
-#' @param sink.nodes to be documented
+#' @param sink.nodes list of sink node ids which will be colored in red
 #' @param ...	Arguments to be passed to methods, such as graphical parameters (see par).
 #' @importFrom "igraph" "igraph.from.graphNEL"
 #' @importFrom "igraph" "V"
@@ -785,6 +785,262 @@ plot_pathway <- function(g, sink.nodes = NULL, ...){
   igraph::tkplot(igr, vertex.shape = igraph::V(igr)$vertex.shape)
   plot(igr, vertex.shape = igraph::V(igr)$shape, ...)
 
+}
+
+#' Plots the pathway and with colored nodes and labels
+#' @param pathway list object from kegg collection
+#' @param plot_type network visualization type. Possible values c("kegg", "visnet"). When kegg option is used the bathway will be plotted over kegg png image. With visnet option function will plot interactive network with kegg layou. 
+#' @param no_color_mode when set to FALSE pathway nodes will be color coded with log expression FC values or log PSF values and color legend will be added to the pathway plot. Default value is TRUE
+#' @param mapping_data_type type on node values to bi visualized. Possible values c("signal", "exp").
+#' @param use_old_images use_old_images use olde kegg images(for use with curated pathway collection).
+#' @import graph
+#' @import visNetwork
+#' @import RCurl
+#' @export
+plot_kegg_image_pathway <- function(pathway, no_color_mode = T, mapping_data_type = "signal", use_old_images = FALSE, plot_type = "kegg") {
+  
+  
+  exp_values_all <- unlist(graph::nodeData(pathway$graph, attr = "expression"))[which(unlist(graph::nodeData(pathway$graph, attr = "type")) == "gene")]
+  
+  mean_exp_values <- round(log(drop(exp_values_all)[order(drop(exp_values_all))] + 0.00001), digits = 5)
+  
+  if(no_color_mode) {
+    exp_colors <- NULL
+  } else {
+    
+    exp_colors <- color_code(values = mean_exp_values, pal1 = pal1, pal2 = pal2)
+    
+    exp_colors = data.frame(node_id = names(mean_exp_values)[c(which(mean_exp_values <= 0), which(mean_exp_values > 0))], 
+                            col = exp_colors,
+                            text_col = unname(sapply(exp_colors, function(x) {c( "black", "white")[  1+(sum( col2rgb(x) *c(299, 587,114))/1000 < 123) ]})),
+                            stringsAsFactors = F
+    )
+  }
+  
+  
+  signal_values_all <- unlist(graph::nodeData(pathway$graph, attr = "signal"))[which(unlist(graph::nodeData(pathway$graph, attr = "type")) != "map")]
+  
+  mean_signal_values <- round(log(signal_values_all[order(signal_values_all)] + 0.00001), digits = 5)
+  
+  if(no_color_mode) {
+    psf_colors <- NULL
+  } else {
+    psf_colors <- color_code(values = mean_signal_values, pal1 = pal1, pal2 = pal2)
+    
+    psf_colors = data.frame(node_id = names(mean_signal_values)[c(which(mean_signal_values <= 0), which(mean_signal_values > 0))], 
+                            col = psf_colors,
+                            text_col = unname(sapply(psf_colors, function(x) {c( "black", "white")[  1+(sum( col2rgb(x) *c(299, 587,114))/1000 < 123) ]})),
+                            stringsAsFactors = F
+    )
+  }
+  
+  # if(graph_layout == "coord_based") {
+  #   
+  # } else {
+  # 
+  # }
+  
+  graphical_data <- graphical_data_generator(pathway)
+  
+  node_graphics <- graphical_data$node_coords
+  
+  if(mapping_data_type == "signal") {
+    color.genes <- psf_colors
+    color_bar_lims <- range(mean_signal_values)
+    col_legend_title = "Log PSF value"
+  } else {
+    color.genes <- exp_colors
+    color_bar_lims <- range(mean_exp_values)
+    col_legend_title = "Log FC value"
+  }
+  
+  if(plot_type == "kegg") {
+    if(use_old_images) {
+      img_path <- system.file("extdata", "old_imgs", paste0(gsub("path:", "", pathway$attrs$name), ".png"), package="psf")
+    } else {
+      img_path <- system.file("extdata", "pathway_imgs", paste0(gsub("path:", "", pathway$attrs$name), ".png"), package="psf")
+    }
+    
+    pathway_image = magick::image_read(img_path)
+    
+    img <- magick::image_draw(pathway_image)
+    
+    
+    ### node exp coloring
+    node_graphics$x_center <- node_graphics$x_start + (node_graphics$x_end - node_graphics$x_start)/2
+    
+    node_graphics$y_center <- node_graphics$y_start + (node_graphics$y_end - node_graphics$y_start)/2
+    
+    rownames(color.genes) <- color.genes$node_id
+    
+    rownames(node_graphics) <- node_graphics$node_id
+    
+    sink_node_graphics <- node_graphics[which(node_graphics$sink),]
+    
+    
+    if(any(node_graphics$node_id %in% color.genes$node_id)) {
+      coloring_set <- node_graphics[color.genes$node_id,]
+      graphics::rect(coloring_set$x_start,
+                     coloring_set$y_start - 1,
+                     coloring_set$x_end,
+                     coloring_set$y_end,
+                     # border = coloring_set$border_color,
+                     border = NA,
+                     # lty = coloring_set$lty_type,
+                     lwd=2,
+                     col = grDevices::adjustcolor( color.genes$col, alpha.f = 1)
+      )
+      
+      graphics::text(x = coloring_set$x_center,
+                     y = coloring_set$y_start,
+                     labels = coloring_set$gr_name,
+                     col = color.genes$text_col, adj = c(0,0.2) + c(0.48, 1))
+      
+    }
+    
+    graphics::text(x = sink_node_graphics$x_end + 10,
+                   y = sink_node_graphics$y_center - 30, cex = 3,
+                   labels = rep("*", nrow(sink_node_graphics)),
+                   col = rep("#9ACD32", nrow(sink_node_graphics)), adj = c(0,0.2) + c(0.48, 1))
+    
+    
+    ### scale color bar
+    if(!no_color_mode) {
+      color_legend_maker(x = magick::image_info(img)$width - 230, y = 50, leg = 200, cols = c(pal1(10), pal2(10)), title = col_legend_title, lims = color_bar_lims, digits=3, prompt=FALSE,
+                         lwd=4, outline=TRUE, subtitle = "", fsize = 1.3)
+    }
+    
+    text(x = c(magick::image_info(img)$width - 88, magick::image_info(img)$width - 30),
+         y = c(70, 65), cex = c(1.5, 3),
+         labels = c("Sink node", "*"),
+         col = c("#000000", "#9ACD32"), adj = c(0,0.2) + c(0.48, 1))
+    
+    
+    ## color grop nodes
+    if(length(pathway$group_nodes) > 0 ) {
+      lapply(pathway$group_nodes, function(z) {
+        graphics::rect( z$kegg.gr.x-z$kegg.gr.width*0.5, 
+                        z$kegg.gr.y+z$kegg.gr.height*0.5, 
+                        z$kegg.gr.x+z$kegg.gr.width*0.5, 
+                        z$kegg.gr.y-z$kegg.gr.height*0.5, 
+                        border = "yellow", lty = "dashed", lwd=2)
+      })
+    }
+    
+    
+    dev.off()
+    
+    return(img)
+  } else {
+    
+    graphical_data$edge_coords <- graphical_data$edge_coords[which(graphical_data$edge_coords$lty == "solid"),]
+    graphical_data$node_coords <- graphical_data$node_coords[which(graphical_data$node_coords$exist),]
+    
+    node_shapes <- unname(sapply(graphical_data$node_coords$node_name, function(x) {
+      if(grepl("cpd",x)) {
+        "dot"
+      } else {
+        "box"
+      }
+    }))
+    
+    if(!is.null(color.genes)) {
+      color <- unname(sapply(graphical_data$node_coords$node_id, function(x) {
+        if(x %in% color.genes$node_id) {
+          color.genes[which(color.genes$node_id == x),"col"]
+        } else {
+          "#BFFFBF"
+        }
+      }))
+      
+      font_color <- unname(sapply(graphical_data$node_coords$node_id, function(x) {
+        if(x %in% color.genes$node_id) {
+          color.genes[which(color.genes$node_id == x),"text_col"]
+        } else {
+          "#000000"
+        }
+      }))
+      
+    } else {
+      
+      color <- rep("#BFFFBF", nrow(graphical_data$node_coords))
+      
+      font_color <- rep("#000000", nrow(graphical_data$node_coords))
+      
+    }
+    
+    border_color <- unname(sapply(graphical_data$node_coords$sink, function(x) {
+      if(x) {
+        "#0099cc"
+      } else {
+        "#BFFFBF"
+      }
+    }))
+    
+    size <- unname(sapply(graphical_data$node_coords$node_name, function(x) {
+      if(grepl("cpd",x)) {
+        10
+      } else {
+        25
+      }
+    }))
+    
+    nodes <- data.frame(id = graphical_data$node_coords$node_id,
+                        image = rep("unselected", nrow(graphical_data$node_coords)),
+                        label = graphical_data$node_coords$gr_name,
+                        shape = node_shapes, color.background = color, 
+                        color.border = border_color, 
+                        # color.highlight = color,
+                        borderWidth = 2,
+                        title = graphical_data$node_coords$hover_name,
+                        font.size = rep(22, nrow(graphical_data$node_coords)), size = size,
+                        font.color = font_color,
+                        x = (graphical_data$node_coords$x_start + graphical_data$node_coords$x_end)/2,
+                        y = (graphical_data$node_coords$y_start + graphical_data$node_coords$y_end)/2
+    )
+    
+    if(!is.null(color.genes)) {
+      
+      legend_img <- magick::image_device(width = 480, height = 480)
+      plot.new()
+      
+      color_legend_maker(x = 0.05, y = 0, leg = 0.9, cols = c(pal1(10), pal2(10)), title = col_legend_title, lims = color_bar_lims, digits=3, prompt=FALSE,
+                         lwd=4, outline=TRUE, subtitle = "", fsize = 1.3)
+      
+      temp_legend <- tempfile()
+      
+      magick::image_write(magick::image_trim(legend_img, fuzz = 0), path = temp_legend)
+      
+      legend_path <- paste('data:image/png;base64', RCurl::base64Encode(readBin(temp_legend, 'raw', file.info('~/legend.png')[1, 'size']), 'txt'), sep = ',')
+      
+      legend_data_frame <- data.frame(
+        id = as.character(max(as.integer(graphical_data$node_coords$node_id)) + 1),
+        image = legend_path,
+        label = "Color legend", shape = "image", color.background = "",
+        color.border = "", borderWidth = 0, title = "",
+        font.size = 32, size = 30, font.color = "#000000",
+        x = max(graphical_data$node_coords$x_end),
+        y = min(graphical_data$node_coords$y_end) - 10
+      )
+      
+      nodes <- rbind(nodes, legend_data_frame)
+    }
+    
+    arrows_type <- c("arrow","bar")
+    names(arrows_type) <- c("simple", "T")
+    
+    edges <- data.frame(from = graphical_data$edge_coords$from, to = graphical_data$edge_coords$to,
+                        color = graphical_data$edge_coords$col,
+                        arrows.to.enabled = rep(TRUE, length(graphical_data$edge_coords$col)),
+                        arrows.to.type = arrows_type[graphical_data$edge_coords$arr.type]
+    )
+    
+    visNetwork(nodes = nodes, edges = edges, width = "100%", height = "800px") %>% 
+      visIgraphLayout(layout = "layout_nicely") %>% 
+      visInteraction(navigationButtons = TRUE, multiselect = T)
+    
+  }
+  
 }
 
 #' Download kegg pathways of provided pathway id list from keggrest and generate kegg collection

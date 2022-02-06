@@ -72,7 +72,7 @@ psf_signal_calculator_and_coloring <- function(entrez_fc, pathway, pathway_name,
     
     # unlist(graph::nodeData(x[[pathway_name]]$graph, attr = "signal"))[which(unlist(graph::nodeData(x[[pathway_name]]$graph, attr = "type")) == "gene")]
     
-    unlist(graph::nodeData(x[[pathway_name]]$graph, attr = "signal"))
+    unlist(graph::nodeData(x[[pathway_name]]$graph, attr = "signal"))[which(unlist(graph::nodeData(x[[pathway_name]]$graph, attr = "type")) != "map")]
     
   })
   
