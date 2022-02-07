@@ -792,7 +792,7 @@ plot_pathway <- function(g, sink.nodes = NULL, ...){
 #' @param plot_type network visualization type. Possible values c("kegg", "visnet"). When kegg option is used the bathway will be plotted over kegg png image. With visnet option function will plot interactive network with kegg layou. 
 #' @param no_color_mode when set to FALSE pathway nodes will be color coded with log expression FC values or log PSF values and color legend will be added to the pathway plot. Default value is TRUE
 #' @param mapping_data_type type on node values to bi visualized. Possible values c("signal", "exp").
-#' @param log10_norm log transform PSF and expression values before color mapping. Default value is TRUE
+#' @param log_norm log transform PSF and expression values before color mapping. Default value is TRUE
 #' @param use_old_images use_old_images use olde kegg images(for use with curated pathway collection).
 #' @import graph
 #' @import visNetwork
