@@ -1,13 +1,19 @@
-color_code <- function(values, pal1, pal2) {
+color_code <- function(values, pal1, pal2, log_scale = TRUE) {
   
-  if(all(values > 0)) {
-    calc_colors <- pal2(10)[cut(values[which(values > 0)],10)]
+  if(log_scale) {
+    center_val <- 0
   } else {
-    if(all(values <= 0)) {
-      calc_colors <- pal1(10)[cut(values[which(values <= 0)],10)]
+    center_val <- 1
+  }
+  
+  if(all(values > center_val)) {
+    calc_colors <- pal2(10)[cut(values[which(values > center_val)],10)]
+  } else {
+    if(all(values <= center_val)) {
+      calc_colors <- pal1(10)[cut(values[which(values <= center_val)],10)]
     } else {
-      calc_colors <- c(pal1(10)[cut(values[which(values <= 0)],10)], 
-                       pal2(10)[cut(values[which(values > 0)],10)])
+      calc_colors <- c(pal1(10)[cut(values[which(values <= center_val)],10)], 
+                       pal2(10)[cut(values[which(values > center_val)],10)])
     }
   }
   

@@ -792,23 +792,28 @@ plot_pathway <- function(g, sink.nodes = NULL, ...){
 #' @param plot_type network visualization type. Possible values c("kegg", "visnet"). When kegg option is used the bathway will be plotted over kegg png image. With visnet option function will plot interactive network with kegg layou. 
 #' @param no_color_mode when set to FALSE pathway nodes will be color coded with log expression FC values or log PSF values and color legend will be added to the pathway plot. Default value is TRUE
 #' @param mapping_data_type type on node values to bi visualized. Possible values c("signal", "exp").
+#' @param log10_norm log transform PSF and expression values before color mapping. Default value is TRUE
 #' @param use_old_images use_old_images use olde kegg images(for use with curated pathway collection).
 #' @import graph
 #' @import visNetwork
 #' @import RCurl
 #' @export
-plot_kegg_image_pathway <- function(pathway, no_color_mode = T, mapping_data_type = "signal", use_old_images = FALSE, plot_type = "kegg") {
+plot_kegg_image_pathway <- function(pathway, no_color_mode = T, mapping_data_type = "signal", log_norm = TRUE, use_old_images = FALSE, plot_type = "kegg") {
   
   
   exp_values_all <- unlist(graph::nodeData(pathway$graph, attr = "expression"))[which(unlist(graph::nodeData(pathway$graph, attr = "type")) == "gene")]
   
-  mean_exp_values <- round(log(drop(exp_values_all)[order(drop(exp_values_all))] + 0.00001), digits = 5)
+  if(log_norm) {
+    mean_exp_values <- round(log(drop(exp_values_all)[order(drop(exp_values_all))] + 0.00001), digits = 5)
+  } else {
+    mean_exp_values <- round(drop(exp_values_all)[order(drop(exp_values_all))], digits = 5)
+  }
   
   if(no_color_mode) {
     exp_colors <- NULL
   } else {
     
-    exp_colors <- color_code(values = mean_exp_values, pal1 = pal1, pal2 = pal2)
+    exp_colors <- color_code(values = mean_exp_values, pal1 = pal1, pal2 = pal2, log_scale = log_norm)
     
     exp_colors = data.frame(node_id = names(mean_exp_values)[c(which(mean_exp_values <= 0), which(mean_exp_values > 0))], 
                             col = exp_colors,
@@ -820,12 +825,16 @@ plot_kegg_image_pathway <- function(pathway, no_color_mode = T, mapping_data_typ
   
   signal_values_all <- unlist(graph::nodeData(pathway$graph, attr = "signal"))[which(unlist(graph::nodeData(pathway$graph, attr = "type")) != "map")]
   
-  mean_signal_values <- round(log(signal_values_all[order(signal_values_all)] + 0.00001), digits = 5)
+  if(log_norm) {
+    mean_signal_values <- round(log(signal_values_all[order(signal_values_all)] + 0.00001), digits = 5)
+  } else {
+    mean_signal_values <- round(signal_values_all[order(signal_values_all)], digits = 5)
+  }
   
   if(no_color_mode) {
     psf_colors <- NULL
   } else {
-    psf_colors <- color_code(values = mean_signal_values, pal1 = pal1, pal2 = pal2)
+    psf_colors <- color_code(values = mean_signal_values, pal1 = pal1, pal2 = pal2, log_scale = log_norm)
     
     psf_colors = data.frame(node_id = names(mean_signal_values)[c(which(mean_signal_values <= 0), which(mean_signal_values > 0))], 
                             col = psf_colors,
@@ -847,11 +856,11 @@ plot_kegg_image_pathway <- function(pathway, no_color_mode = T, mapping_data_typ
   if(mapping_data_type == "signal") {
     color.genes <- psf_colors
     color_bar_lims <- range(mean_signal_values)
-    col_legend_title = "Log PSF value"
+    col_legend_title = ifelse(log_norm, "Log PSF value", "PSF value")
   } else {
     color.genes <- exp_colors
     color_bar_lims <- range(mean_exp_values)
-    col_legend_title = "Log FC value"
+    col_legend_title = ifelse(log_norm, "Log FC value", "FC value")
   }
   
   if(plot_type == "kegg") {
@@ -961,7 +970,27 @@ plot_kegg_image_pathway <- function(pathway, no_color_mode = T, mapping_data_typ
         }
       }))
       
+      if(log_norm) {
+        hover_string <- paste(graphical_data$node_coords$hover_name, 
+                              paste("Node id", graphical_data$node_coords$node_id),
+                              paste("Log exp FC", mean_exp_values[graphical_data$node_coords$node_id]),
+                              paste("Log PSF", mean_signal_values[graphical_data$node_coords$node_id]),
+                              sep = "<br>")
+      } else {
+        hover_string <- paste(graphical_data$node_coords$hover_name, 
+                              paste("Node id", graphical_data$node_coords$node_id),
+                              paste("Exp FC", mean_exp_values[graphical_data$node_coords$node_id]),
+                              paste("PSF", mean_signal_values[graphical_data$node_coords$node_id]),
+                              sep = "<br>")
+      }
+      
     } else {
+      
+      hover_string <- paste(graphical_data$node_coords$hover_name, 
+                            paste("Node id", graphical_data$node_coords$node_id),
+                            paste("Exp FC", exp_values_all[graphical_data$node_coords$node_id]),
+                            paste("PSF", signal_values_all[graphical_data$node_coords$node_id]),
+                            sep = "<br>")
       
       color <- rep("#BFFFBF", nrow(graphical_data$node_coords))
       
@@ -992,7 +1021,7 @@ plot_kegg_image_pathway <- function(pathway, no_color_mode = T, mapping_data_typ
                         color.border = border_color, 
                         # color.highlight = color,
                         borderWidth = 2,
-                        title = graphical_data$node_coords$hover_name,
+                        title = hover_string,
                         font.size = rep(22, nrow(graphical_data$node_coords)), size = size,
                         font.color = font_color,
                         x = (graphical_data$node_coords$x_start + graphical_data$node_coords$x_end)/2,

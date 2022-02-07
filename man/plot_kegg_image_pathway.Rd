@@ -8,6 +8,7 @@ plot_kegg_image_pathway(
   pathway,
   no_color_mode = T,
   mapping_data_type = "signal",
+  log_norm = TRUE,
   use_old_images = FALSE,
   plot_type = "kegg"
 )
@@ -22,6 +23,8 @@ plot_kegg_image_pathway(
 \item{use_old_images}{use_old_images use olde kegg images(for use with curated pathway collection).}
 
 \item{plot_type}{network visualization type. Possible values c("kegg", "visnet"). When kegg option is used the bathway will be plotted over kegg png image. With visnet option function will plot interactive network with kegg layou.}
+
+\item{log10_norm}{log transform PSF and expression values before color mapping. Default value is TRUE}
 }
 \description{
 Plots the pathway and with colored nodes and labels
