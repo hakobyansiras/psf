@@ -2,7 +2,7 @@
 % Please edit documentation in R/kegg.functions.R
 \name{plot_kegg_image_pathway}
 \alias{plot_kegg_image_pathway}
-\title{Plots the pathway and with colored nodes and labels}
+\title{Plots the pathway with colored nodes and labels}
 \usage{
 plot_kegg_image_pathway(
   pathway,
@@ -27,5 +27,5 @@ plot_kegg_image_pathway(
 \item{plot_type}{network visualization type. Possible values c("kegg", "visnet"). When kegg option is used the bathway will be plotted over kegg png image. With visnet option function will plot interactive network with kegg layou.}
 }
 \description{
-Plots the pathway and with colored nodes and labels
+Plots the pathway with colored nodes and labels
 }

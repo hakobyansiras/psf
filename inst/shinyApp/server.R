@@ -432,7 +432,7 @@ node_pairs_generator <- function(selected_node_name, direction = TRUE, direction
 }
 
 #### visnet data generator ####
-visnet_creator <- function(graphical_data, node_colors = NULL) {
+visnet_creator <- function(graphical_data, node_colors = NULL, col_legend_title = "", color_bar_lims = "") {
   graphical_data$edge_coords <- graphical_data$edge_coords[which(graphical_data$edge_coords$lty == "solid"),]
   graphical_data$node_coords <- graphical_data$node_coords[which(graphical_data$node_coords$exist),]
   
@@ -461,6 +461,14 @@ visnet_creator <- function(graphical_data, node_colors = NULL) {
       }
     }))
     
+    border_color <- unname(sapply(graphical_data$node_coords$sink, function(x) {
+      if(x) {
+        "#0099cc"
+      } else {
+        "#BFFFBF"
+      }
+    }))
+    
   } else {
     color <- unname(sapply(graphical_data$node_coords$sink, function(x) {
       if(x) {
@@ -469,6 +477,8 @@ visnet_creator <- function(graphical_data, node_colors = NULL) {
         "#BFFFBF"
       }
     }))
+    
+    border_color <- rep("#BFFFBF", nrow(graphical_data$node_coords))
     
     font_color <- rep("#000000", nrow(graphical_data$node_coords))
     
@@ -483,14 +493,52 @@ visnet_creator <- function(graphical_data, node_colors = NULL) {
   }))
   
   nodes <- data.frame(id = graphical_data$node_coords$node_id,
+                      image = rep("unselected", nrow(graphical_data$node_coords)),
                       label = graphical_data$node_coords$gr_name,
-                      shape = node_shapes, color = color, 
+                      shape = node_shapes, 
+                      color = color, 
+                      color.border = border_color, 
                       title = graphical_data$node_coords$hover_name,
-                      font.size = rep(22, nrow(graphical_data$node_coords)), size = size,
+                      borderWidth = 2,
+                      font.size = rep(22, nrow(graphical_data$node_coords)), 
+                      size = size,
                       font.color = font_color,
                       x = (graphical_data$node_coords$x_start + graphical_data$node_coords$x_end)/2,
-                      y = (graphical_data$node_coords$y_start + graphical_data$node_coords$y_end)/2
+                      y = (graphical_data$node_coords$y_start + graphical_data$node_coords$y_end)/2,
+                      row.names = graphical_data$node_coords$node_id, stringsAsFactors = F
   )
+  
+  if(!is.null(node_colors)) {
+    
+    legend_img <- magick::image_device(width = 480, height = 480)
+    plot.new()
+    
+    color_legend_maker(x = 0.05, y = 0, leg = 0.9, cols = c(pal1(10), pal2(10)), title = col_legend_title, lims = color_bar_lims, digits=3, prompt=FALSE,
+                       lwd=4, outline=TRUE, subtitle = "", fsize = 1.3)
+    
+    temp_legend <- tempfile()
+    
+    magick::image_write(magick::image_trim(legend_img, fuzz = 0), path = temp_legend)
+    
+    legend_path <- paste('data:image/png;base64', RCurl::base64Encode(readBin(temp_legend, 'raw', file.info('~/legend.png')[1, 'size']), 'txt'), sep = ',')
+    
+    legend_data_frame <- data.frame(
+      id = as.character(max(as.integer(graphical_data$node_coords$node_id)) + 1),
+      image = legend_path,
+      label = "Color legend", 
+      shape = "image",
+      color = "", 
+      color.border = "", 
+      title = "",
+      borderWidth = 0,
+      font.size = 32, size = 30, font.color = "#000000",
+      x = max(graphical_data$node_coords$x_end),
+      y = min(graphical_data$node_coords$y_end) - 10
+    )
+    
+    nodes <- rbind(nodes, legend_data_frame)
+    
+  }
   
   arrows_type <- c("arrow","bar")
   names(arrows_type) <- c("simple", "T")
@@ -1539,7 +1587,7 @@ shinyServer(function(input, output, session) {
     v$image_file <- kegg_node_mapper(group_graphics = v$pathway_data$group_graphics, kegg_pathway_graphics = v$graphical_data, pathway_name = v$pathway_name, pathway_image = v$pathway_image, color.genes = v$psf_and_colors$exp_colors, color_bar_psf_mode = v$color_bar_psf_mode, col_legend_title = v$col_legend_title, color_bar_lims = v$color_bar_lims, draw_color_bar = v$draw_color_bar) %>% 
       image_write(tempfile(fileext='png'), format = 'png')
     
-    v$visnet_list <- visnet_creator(v$graphical_data, node_colors = v$psf_and_colors$exp_colors)
+    v$visnet_list <- visnet_creator(v$graphical_data, node_colors = v$psf_and_colors$exp_colors, col_legend_title = v$col_legend_title, color_bar_lims = v$color_bar_lims)
     
     v$pathway_exp_colored = TRUE
     
@@ -1602,7 +1650,7 @@ shinyServer(function(input, output, session) {
     # image_append(c(v$image_file, gg_plot_img)) %>%
     #   image_write(tempfile(fileext='png'), format = 'png')  
     
-    v$visnet_list <- visnet_creator(v$graphical_data, node_colors = v$psf_and_colors$psf_colors)
+    v$visnet_list <- visnet_creator(v$graphical_data, node_colors = v$psf_and_colors$psf_colors, col_legend_title = v$col_legend_title, color_bar_lims = v$color_bar_lims)
     
     v$pathway_psf_colored = TRUE
     
@@ -1644,7 +1692,7 @@ shinyServer(function(input, output, session) {
     v$image_file <- kegg_node_mapper(group_graphics = v$pathway_data$group_graphics, kegg_pathway_graphics = v$graphical_data, pathway_name = v$pathway_name, pathway_image = v$pathway_image, highlight.genes = v$selected_node_name, color.genes = v$psf_and_colors$psf_colors, color_bar_psf_mode = v$color_bar_psf_mode, col_legend_title = v$col_legend_title, color_bar_lims = v$color_bar_lims, draw_color_bar = v$draw_color_bar) %>% 
       image_write(tempfile(fileext='png'), format = 'png')
     
-    v$visnet_list <- visnet_creator(v$graphical_data, node_colors = v$psf_and_colors$psf_colors)
+    v$visnet_list <- visnet_creator(v$graphical_data, node_colors = v$psf_and_colors$psf_colors, col_legend_title = v$col_legend_title, color_bar_lims = v$color_bar_lims)
     
     ### temporarely commented ggplot of sink values
     # sink_gg_plot <- ggplot(v$psf_and_colors$sink_signals, aes(x=sink_name, y=signal, fill=signal)) +
@@ -1716,7 +1764,7 @@ shinyServer(function(input, output, session) {
     v$image_file <- kegg_node_mapper(group_graphics = v$pathway_data$group_graphics, kegg_pathway_graphics = v$graphical_data, pathway_name = v$pathway_name, pathway_image = v$pathway_image, highlight.genes = v$selected_node_name, color.genes = v$psf_and_colors$psf_colors, color_bar_psf_mode = v$color_bar_psf_mode, col_legend_title = v$col_legend_title, color_bar_lims = v$color_bar_lims, draw_color_bar = v$draw_color_bar) %>% 
       image_write(tempfile(fileext='png'), format = 'png')
     
-    v$visnet_list <- visnet_creator(v$graphical_data, node_colors = v$psf_and_colors$psf_colors)
+    v$visnet_list <- visnet_creator(v$graphical_data, node_colors = v$psf_and_colors$psf_colors, col_legend_title = v$col_legend_title, color_bar_lims = v$color_bar_lims)
     
     hide('edge_attr_editing_panel_vis')
     
@@ -1769,7 +1817,48 @@ shinyServer(function(input, output, session) {
     visNetwork(nodes = v$visnet_list$nodes, edges = v$visnet_list$edges, width = "100%", height = "800px") %>% 
       visIgraphLayout(layout = "layout_nicely") %>% 
       visInteraction(navigationButtons = TRUE, multiselect = T) %>%
-      visExport()
+      visExport() %>%
+      visEvents(click = "function(nodes) {
+                      console.info('click')
+                      console.info(nodes)
+                      Shiny.onInputChange('clicked_node', {nodes : nodes.nodes, edges : nodes.edges});
+                      ;}"
+      )
+  })
+  
+  #### partial influence node detection by network node click ####
+  observeEvent(input$get_partial_influence, {
+    output$partial_inf_err <- NULL
+    if(!is.null(unlist(input$clicked_node$nodes)) & input$influence_type != "None") {
+      
+      influence_nodes <- calc_node_partial_influences(pathway = v$psf_and_colors$psf_graph[[1]][[v$pathway_name]], influence_node = unlist(input$clicked_node$nodes), influence_direction = input$influence_type)
+      
+      if(input$influence_node_num == "all") {
+        influence_nodes <- influence_nodes
+      } else {
+        if(length(influence_nodes) > as.numeric(input$influence_node_num)) {
+          influence_nodes <- influence_nodes[1:as.numeric(input$influence_node_num)]
+        }
+      }
+      
+      v$visnet_list$nodes <- visnet_creator(v$graphical_data, node_colors = v$psf_and_colors$psf_colors, col_legend_title = v$col_legend_title, color_bar_lims = v$color_bar_lims)$nodes
+      
+      
+      v$visnet_list$nodes[unlist(input$clicked_node$nodes),"font.color"] <- "#ff0000"
+      # new_node_data[names(influence_nodes),"size"] <- 30
+      v$visnet_list$nodes[names(influence_nodes),"label"] <- paste(1:length(influence_nodes), "\n", v$visnet_list$nodes[names(influence_nodes),"label"])
+      
+    } else {
+      output$partial_inf_err <- renderText({paste("<font color=\"#ff0000\"><b>", "Select network node and influence type", "</b></font>")})
+    }
+    
+  })
+  
+  observeEvent(input$influence_type, {
+    if(input$influence_type == "None") {
+      v$visnet_list$nodes <- visnet_creator(v$graphical_data, node_colors = v$psf_and_colors$psf_colors, col_legend_title = v$col_legend_title, color_bar_lims = v$color_bar_lims)$nodes
+      # v$visnet_list$nodes$label <- unlist(strsplit(v$visnet_list$nodes$label, split = "\n"))[length(unlist(strsplit(v$visnet_list$nodes$label, split = "\n")))]
+    }
   })
   
   #### visnet search ####

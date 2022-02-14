@@ -787,7 +787,7 @@ plot_pathway <- function(g, sink.nodes = NULL, ...){
 
 }
 
-#' Plots the pathway and with colored nodes and labels
+#' Plots the pathway with colored nodes and labels
 #' @param pathway list object from kegg collection
 #' @param plot_type network visualization type. Possible values c("kegg", "visnet"). When kegg option is used the bathway will be plotted over kegg png image. With visnet option function will plot interactive network with kegg layou. 
 #' @param no_color_mode when set to FALSE pathway nodes will be color coded with log expression FC values or log PSF values and color legend will be added to the pathway plot. Default value is TRUE

@@ -117,7 +117,7 @@ psf.from.env.entrez.fc <- function(entrez.fc, kegg.collection, split = TRUE, cal
   for(c in 1:ncol(entrez.fc)){
     # cat("Column", c)
     for(i in 1:length(kegg.collection)){
-      cat("\nKEGG collection number: ", i, " exp matrix column: ", c)
+      cat("KEGG collection number: ", i, " exp matrix column: ", c, "\n")
       pathway = names(kegg.collection)[i]
       # show(pathway)
       if(!length(kegg.collection[[i]])==0){
@@ -129,6 +129,8 @@ psf.from.env.entrez.fc <- function(entrez.fc, kegg.collection, split = TRUE, cal
           
           g = map.gene.data(kegg.collection[[i]]$graph, entrez.column)
         } else {
+          graph::nodeData(kegg.collection[[i]]$graph, attr = "signal") <- 1
+          
           g = kegg.collection[[i]]$graph
         }
         
@@ -266,4 +268,48 @@ determine.sink.nodes <- function(pathway){
   }
 
   return(sink.nodes)
+}
+
+
+#' Returns ordered list of the nodes by their influence on the signal of specified nodes.
+#' @param pathway pathway with mapped gene expression data
+#' @param influence_node sigle id of node or vector of node ids based on which partial influencse will be calculated.
+#' @param influence_direction in which direction node affects the signal of target node. possible values c("+", "-", "any"). Default value is "any"
+#' @export
+calc_node_partial_influences <- function(pathway, influence_node, influence_direction = "any") {
+  
+  if(!("signal.at.sink" %in% names(pathway))) {
+    stop("Pleas provide pathway with evaluated activity")
+  }
+  
+  psf_values <- unlist(graph::nodeData(pathway$graph, attr = "signal"))
+  
+  influence_psf_mat <- sapply(graph::nodes(pathway$graph), function(x) {
+    
+    iteration_graph <- pathway$graph
+    
+    if(graph::nodeData(iteration_graph, x, attr = "type") == "gene") {
+      graph::nodeData(iteration_graph, x, attr = "expression") <- 1
+    }
+    
+    unlist(graph::nodeData(psf.flow(iteration_graph, pathway$order, pathway$sink.nodes, split = TRUE, sum = FALSE)$graph, attr = "signal"))
+    
+  })
+  
+  psf_difference <- influence_psf_mat - psf_values
+  
+  if(influence_direction == "any") {
+    ordered_influence_nodes <- sort(abs(colSums(psf_difference[influence_node,, drop = FALSE]))[which(abs(colSums(psf_difference[influence_node,, drop = FALSE])) > 0)], decreasing = T)
+  }
+  
+  if(influence_direction == "+") {
+    ordered_influence_nodes <- sort(colSums(psf_difference[influence_node,, drop = FALSE])[which(colSums(psf_difference[influence_node,, drop = FALSE]) > 0)], decreasing = T)
+  }
+  
+  if(influence_direction == "-") {
+    ordered_influence_nodes <- sort(colSums(psf_difference[influence_node,, drop = FALSE])[which(colSums(psf_difference[influence_node,, drop = FALSE]) < 0)])
+  }
+  
+  return(ordered_influence_nodes)
+  
 }

@@ -250,6 +250,15 @@ shinyUI(
                      # ),
                      div(style="display: inline-block;vertical-align:top; width: 210px;",
                          actionButton("reset_changed_values", label = "Reset modifications")
+                     ),
+                     div(style="display: inline-block;vertical-align:top; width: 230px;",
+                         dropdown(label = "Partial influence analysis",
+                                  div(style="display: inline-block;vertical-align:top;", selectizeInput("influence_type", label = "Influence type", choices = c("None", "any", "+", "-"), selected = "None")),
+                                  div(style="display: inline-block;vertical-align:top;", selectizeInput("influence_node_num", label = "Number of nodes", choices = c(1:5, "all"), selected = "1")),
+                                  div(style="display: inline-block;vertical-align:top;", actionButton("get_partial_influence", label = "Highlight part inf. nodes"),
+                                  htmlOutput('partial_inf_err')
+                                  )
+                         )
                      )
                      # div(style="display: inline-block;vertical-align:top; width: 210px;",
                      #     downloadButton("download_signal_table", label = "Download signal table", style='display: block; margin: auto;')

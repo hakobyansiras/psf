@@ -3,6 +3,7 @@
 export(add.kegg.edge)
 export(add.kegg.edge.mut)
 export(addEdgeSafe)
+export(calc_node_partial_influences)
 export(calc_psf_and_generate_report_from_collection)
 export(correctEdgeDirections)
 export(determine.sink.nodes)
