@@ -7,7 +7,7 @@
 #' @export
 map.gene.data <- function(g, entrez.fc){
   
-  if(class(entrez.fc) != "matrix") {
+  if(!("matrix" %in% class(entrez.fc))) {
     stop(paste0("ERROR: Provided expression data is in", class(entrez.fc), "class, provide expression matrix in matrix class"))
   }
   
@@ -117,7 +117,7 @@ psf.from.env.entrez.fc <- function(entrez.fc, kegg.collection, split = TRUE, cal
   for(c in 1:ncol(entrez.fc)){
     # cat("Column", c)
     for(i in 1:length(kegg.collection)){
-      cat("KEGG collection number: ", i, " exp matrix column: ", c, "\n")
+      cat(names(kegg.collection)[i], " exp matrix column: ", c, "\n")
       pathway = names(kegg.collection)[i]
       # show(pathway)
       if(!length(kegg.collection[[i]])==0){
