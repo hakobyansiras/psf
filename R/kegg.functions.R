@@ -106,6 +106,7 @@ parse.KGML <- function(kgml){
   graph::nodeDataDefaults(g, attr = "change_info") <- "no_change"
   graph::nodeDataDefaults(g, attr = "data_source") <- "kegg"
   graph::nodeDataDefaults(g, attr = "node_function") <- "mean"
+  graph::nodeDataDefaults(g, attr = "psf_function") <- ""
   
   for(attr in entry.attr.names){
     graph::nodeDataDefaults(g, attr = attr) <- NA
