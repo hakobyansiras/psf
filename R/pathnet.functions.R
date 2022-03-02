@@ -110,8 +110,9 @@ psf.from.env.indata <- function(indata.fc){
 #' @param bst.steps integer, the number of the interations for shuffling and recalculating PSF values for the significance analysis
 #' @param sum logical, default value is FALSE. When set to true pathway activity will be caculated via addition, when set to false then activity willbe calculated via multiplication
 #' @param map_exp_data logical, default value is TRUE. When set to false the expression data will not be mapped into pathway nodes and pathway node expression values will be used instead.
+#' @param return_only_signals logical, default value is FALSE. When set to true only PSF values of the pathway nodes will be retruned in the results. Set to TRUE when analyzing large datasets to reduce size of the output file.
 #' @export
-psf.from.env.entrez.fc <- function(entrez.fc, kegg.collection, split = TRUE, calculate.significance = T, bst.steps = 200, sum = FALSE, map_exp_data = TRUE){
+psf.from.env.entrez.fc <- function(entrez.fc, kegg.collection, split = TRUE, calculate.significance = T, bst.steps = 200, sum = FALSE, map_exp_data = TRUE, return_only_signals = FALSE){
   psf.results.collection = list()
   psf.results.collections = list()
   for(c in 1:ncol(entrez.fc)){
@@ -151,8 +152,11 @@ psf.from.env.entrez.fc <- function(entrez.fc, kegg.collection, split = TRUE, cal
       psf.results.processed = psf.results.collection
     }
 
-
-    psf.results.collections[[c]] = psf.results.processed
+    if(return_only_signals) {
+      psf.results.collections[[c]] <- lapply(psf.results.processed, function(x) {unlist(graph::nodeData(x$graph, attr = "signal"))})
+    } else {
+      psf.results.collections[[c]] = psf.results.processed
+    }
   }
   
   names(psf.results.collections) <- colnames(entrez.fc)

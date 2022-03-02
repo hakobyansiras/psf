@@ -57,7 +57,14 @@ psf.flow <- function(g, node.ordering, sink.nodes, split = TRUE, sum = FALSE, mu
     if (length(parent.nodes)>0) {
       #       node.exp <- nodeData(g, i, attr = "expression")[[1]]
       node.exp = E[i,1]
-      in.signal <- unlist(graph::nodeData(g, parent.nodes, attr = "signal"))
+      
+      ### input signal processing of function nodes
+      
+      if("psf_function" %in% names(graph::nodeDataDefaults(g)) & unname(unlist(graph::nodeData(g, node, attr = "psf_function"))) %in% c("min", "max", "sum")) {
+        in.signal <- get(unname(unlist(graph::nodeData(g, node, attr = "psf_function"))))(unlist(graph::nodeData(g, parent.nodes, attr = "signal")))
+      } else {
+        in.signal <- unlist(graph::nodeData(g, parent.nodes, attr = "signal"))
+      }
       pi = which(nods %in% parent.nodes)
       #       show(i)
       #       cat(length(parent.nodes), "\n")
