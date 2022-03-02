@@ -11,7 +11,8 @@ psf.from.env.entrez.fc(
   calculate.significance = T,
   bst.steps = 200,
   sum = FALSE,
-  map_exp_data = TRUE
+  map_exp_data = TRUE,
+  return_only_signals = FALSE
 )
 }
 \arguments{
@@ -28,6 +29,8 @@ psf.from.env.entrez.fc(
 \item{sum}{logical, default value is FALSE. When set to true pathway activity will be caculated via addition, when set to false then activity willbe calculated via multiplication}
 
 \item{map_exp_data}{logical, default value is TRUE. When set to false the expression data will not be mapped into pathway nodes and pathway node expression values will be used instead.}
+
+\item{return_only_signals}{logical, default value is FALSE. When set to true only PSF values of the pathway nodes will be retruned in the results. Set to TRUE when analyzing large datasets to reduce size of the output file.}
 }
 \description{
 Calculates pathway activity with PSF algorithm for provided kegg collection based on expression fold change data
