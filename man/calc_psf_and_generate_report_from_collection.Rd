@@ -8,6 +8,7 @@ calc_psf_and_generate_report_from_collection(
   kegg_collection,
   exp_matrix,
   file_name,
+  calculate_significance = FALSE,
   use_old_images = F
 )
 }
@@ -17,6 +18,8 @@ calc_psf_and_generate_report_from_collection(
 \item{exp_matrix}{expression fold change matrix with gene entrez id rownames}
 
 \item{file_name}{name of the pdf report which will be generated}
+
+\item{calculate_significance}{logical, if true then psf function will also calculate significance for the PSF values by shuffling all the network nodes and checking if the resulted PSF values were calculated by chance. When set to true volcano plot will be generetaed in pdf report.}
 
 \item{use_old_images}{use olde kegg images(for use with curated pathway collection)}
 }

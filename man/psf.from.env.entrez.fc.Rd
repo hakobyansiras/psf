@@ -22,7 +22,7 @@ psf.from.env.entrez.fc(
 
 \item{split}{logical, if true then the incoming signal will be proportionally splitted among the edges}
 
-\item{calculate.significance}{logical, if true then function will also calculate significance for the PSF values by shuffling all the network nodes in checking if the resulted PSF values were calculated by chance}
+\item{calculate.significance}{logical, if true then function will also calculate significance for the PSF values by shuffling all the network nodes and checking if the resulted PSF values were calculated by chance}
 
 \item{bst.steps}{integer, the number of the interations for shuffling and recalculating PSF values for the significance analysis}
 

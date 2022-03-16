@@ -21,11 +21,11 @@ color_code <- function(values, pal1, pal2, log_scale = TRUE) {
 }
 
 
-psf_signal_calculator_and_coloring <- function(entrez_fc, pathway, pathway_name, no_color_mode = F) {
+psf_signal_calculator_and_coloring <- function(entrez_fc, pathway, pathway_name, calculate_significance = FALSE, no_color_mode = F) {
   
   psf_graph <- psf.from.env.entrez.fc(entrez.fc = entrez_fc,
                                       kegg.collection = setNames(object = list(pathway), nm = pathway_name), 
-                                      calculate.significance = F, sum = FALSE)
+                                      calculate.significance = calculate_significance, sum = FALSE)
   
   exp_values_all <- sapply(psf_graph, function(x) {
     

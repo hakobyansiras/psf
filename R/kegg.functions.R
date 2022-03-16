@@ -1065,8 +1065,15 @@ plot_kegg_image_pathway <- function(pathway, no_color_mode = T, mapping_data_typ
                         arrows.to.type = arrows_type[graphical_data$edge_coords$arr.type]
     )
     
+    saving_pathway_name <- gsub("(", "", pathway$attrs$title, fixed = T)
+    saving_pathway_name <- gsub(")", "", saving_pathway_name, fixed = T)
+    saving_pathway_name <- gsub("-", "_", saving_pathway_name)
+    saving_pathway_name <- gsub(" ", "_", saving_pathway_name)
+    saving_pathway_name <- gsub("___", "_", saving_pathway_name)
+    
     visNetwork(nodes = nodes, edges = edges, width = "100%", height = "800px") %>% 
       visIgraphLayout(layout = "layout_nicely") %>% 
+      visExport(name = saving_pathway_name) %>%
       visInteraction(navigationButtons = TRUE, multiselect = T)
     
   }

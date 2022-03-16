@@ -27,6 +27,7 @@ Imports:
         visNetwork,
         shinyjqui,
         ggplot2,
+        ggrepel,
         gplots,
         shinyWidgets,
         shinycssloaders,
