@@ -107,5 +107,13 @@ edited_pathways_new <- lapply(edited_pathways_new, function(x) {
   
 })
 
+### removing incorrectly connected map which was clasified as a sink node
+edited_pathways_new$MAPK_signaling_pathway$graph <- graph::removeEdge(from = "47", to = "42", graph = edited_pathways_new$MAPK_signaling_pathway$graph)
+edited_pathways_new$MAPK_signaling_pathway$graph <- psf::set.edge.impacts(edited_pathways_new$MAPK_signaling_pathway$graph)
+edited_pathways_new$MAPK_signaling_pathway$order <- psf::order.nodes(edited_pathways_new$MAPK_signaling_pathway$graph)
+edited_pathways_new$MAPK_signaling_pathway$sink.nodes <- psf::determine.sink.nodes(edited_pathways_new$MAPK_signaling_pathway)
+
+
+
 save(edited_pathways_new, kegg_compounds_to_full_name, entrez_to_symbol, file = "inst/extdata/edited_pathways_new.RData")
 

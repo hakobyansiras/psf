@@ -10,7 +10,9 @@ plot_kegg_image_pathway(
   mapping_data_type = "signal",
   log_norm = TRUE,
   use_old_images = FALSE,
-  plot_type = "kegg"
+  plot_type = "kegg",
+  highlight_nodes = NULL,
+  highlight_color = "red"
 )
 }
 \arguments{
@@ -25,6 +27,10 @@ plot_kegg_image_pathway(
 \item{use_old_images}{use_old_images use olde kegg images(for use with curated pathway collection).}
 
 \item{plot_type}{network visualization type. Possible values c("kegg", "visnet"). When kegg option is used the bathway will be plotted over kegg png image. With visnet option function will plot interactive network with kegg layou.}
+
+\item{highlight_nodes}{single value of node id or a vector of ids to be highlighted in plotted pathway. Default value is NULL}
+
+\item{highlight_color}{Highlighed nodes color. Default values is "red"}
 }
 \description{
 Plots the pathway with colored nodes and labels

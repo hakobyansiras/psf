@@ -795,11 +795,13 @@ plot_pathway <- function(g, sink.nodes = NULL, ...){
 #' @param mapping_data_type type on node values to bi visualized. Possible values c("signal", "exp").
 #' @param log_norm log transform PSF and expression values before color mapping. Default value is TRUE
 #' @param use_old_images use_old_images use olde kegg images(for use with curated pathway collection).
+#' @param highlight_nodes single value of node id or a vector of ids to be highlighted in plotted pathway. Default value is NULL
+#' @param highlight_color Highlighed nodes color. Default values is "red"
 #' @import graph
 #' @import visNetwork
 #' @import RCurl
 #' @export
-plot_kegg_image_pathway <- function(pathway, no_color_mode = T, mapping_data_type = "signal", log_norm = TRUE, use_old_images = FALSE, plot_type = "kegg") {
+plot_kegg_image_pathway <- function(pathway, no_color_mode = T, mapping_data_type = "signal", log_norm = TRUE, use_old_images = FALSE, plot_type = "kegg", highlight_nodes = NULL, highlight_color = "red") {
   
   
   exp_values_all <- unlist(graph::nodeData(pathway$graph, attr = "expression"))[which(unlist(graph::nodeData(pathway$graph, attr = "type")) == "gene")]
@@ -908,10 +910,23 @@ plot_kegg_image_pathway <- function(pathway, no_color_mode = T, mapping_data_typ
       
     }
     
-    graphics::text(x = sink_node_graphics$x_end + 10,
-                   y = sink_node_graphics$y_center - 30, cex = 3,
-                   labels = rep("*", nrow(sink_node_graphics)),
-                   col = rep("#9ACD32", nrow(sink_node_graphics)), adj = c(0,0.2) + c(0.48, 1))
+    if(is.null(highlight_nodes)) {
+      graphics::text(x = sink_node_graphics$x_end + 10,
+                     y = sink_node_graphics$y_center - 30, cex = 3,
+                     labels = rep("*", nrow(sink_node_graphics)),
+                     col = rep("#9ACD32", nrow(sink_node_graphics)), adj = c(0,0.2) + c(0.48, 1))
+    } else {
+      highlight_set <- node_graphics[which(node_graphics[,"node_id"] %in% highlight_nodes),]
+        
+      rect( highlight_set$x_start, 
+            highlight_set$y_start, 
+            highlight_set$x_end, 
+            highlight_set$y_end, 
+            border = highlight_color, lty = "solid", lwd=2, col = adjustcolor( "#a3297a", alpha.f = 0))
+        
+    }
+    
+    
     
     
     ### scale color bar
@@ -999,13 +1014,27 @@ plot_kegg_image_pathway <- function(pathway, no_color_mode = T, mapping_data_typ
       
     }
     
-    border_color <- unname(sapply(graphical_data$node_coords$sink, function(x) {
-      if(x) {
-        "#0099cc"
-      } else {
-        "#BFFFBF"
-      }
-    }))
+    if(is.null(highlight_nodes)) {
+      border_color <- unname(sapply(graphical_data$node_coords$sink, function(x) {
+        if(x) {
+          "#0099cc"
+        } else {
+          "#BFFFBF"
+        }
+      }))
+    } else {
+      
+      border_color <- unname(sapply(graphical_data$node_coords$node_id, function(x) {
+        if(x %in% highlight_nodes) {
+          highlight_color
+        } else {
+          "#BFFFBF"
+        }
+      }))
+      
+    }
+    
+    
     
     size <- unname(sapply(graphical_data$node_coords$node_name, function(x) {
       if(grepl("cpd",x)) {
