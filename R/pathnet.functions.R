@@ -300,7 +300,7 @@ calc_node_partial_influences <- function(pathway, influence_node, influence_dire
     
   })
   
-  psf_difference <- influence_psf_mat - psf_values
+  psf_difference <- log(influence_psf_mat/psf_values)
   
   if(influence_direction == "any") {
     ordered_influence_nodes <- sort(abs(colSums(psf_difference[influence_node,, drop = FALSE]))[which(abs(colSums(psf_difference[influence_node,, drop = FALSE])) > 0)], decreasing = T)
