@@ -1,7 +1,7 @@
 #' Calculates psf for given kegg pathway based on expression matrix and generates pdf report with colored pathways and plots
 #' @param kegg_collection list of kegg pathways
 #' @param exp_matrix expression fold change matrix with gene entrez id rownames
-#' @param file_name name of the pdf report which will be generated
+#' @param folder_name name of the folder where pdf report(s) will be generated
 #' @param use_old_images use olde kegg images(for use with curated pathway collection)
 #' @param calculate_significance logical, if true then psf function will also calculate significance for the PSF values by shuffling all the network nodes and checking if the resulted PSF values were calculated by chance. When set to true volcano plot will be generetaed in pdf report.
 #' @import gplots
@@ -10,9 +10,11 @@
 #' @import magick
 #' @import grDevices
 #' @export
-calc_psf_and_generate_report_from_collection <- function(kegg_collection, exp_matrix, file_name, calculate_significance = FALSE, use_old_images = F) {
+calc_psf_and_generate_report_from_collection <- function(kegg_collection, exp_matrix, folder_name, calculate_significance = FALSE, use_old_images = F) {
   
-  plot_list <- lapply(names(kegg_collection), function(x) {
+  dir.create(folder_name)
+  
+  lapply(names(kegg_collection), function(x) {
     
     psf_output <- psf_signal_calculator_and_coloring(entrez_fc = exp_matrix, 
                                                      pathway = kegg_collection[[x]], 
@@ -94,10 +96,7 @@ calc_psf_and_generate_report_from_collection <- function(kegg_collection, exp_ma
       plots <- image_append(c(plots, volcano_plot_img))
     }
     
-    
-    c(pathway_img_new, plots)
+    magick::image_write(c(pathway_img_new, plots), format = "pdf", path = paste0(folder_name, "/", x, ".pdf"), quality = 300)
   })
-  
-  magick::image_write(Reduce(c, plot_list), format = "pdf", file_name, quality = 300)
   
 }

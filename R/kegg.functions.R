@@ -796,7 +796,7 @@ plot_pathway <- function(g, sink.nodes = NULL, ...){
 #' @param log_norm log transform PSF and expression values before color mapping. Default value is TRUE
 #' @param use_old_images use_old_images use olde kegg images(for use with curated pathway collection).
 #' @param highlight_nodes single value of node id or a vector of ids to be highlighted in plotted pathway. Default value is NULL
-#' @param highlight_color Highlighed nodes color. Default values is "red"
+#' @param highlight_color Highlighed nodes color(s). Default values is "red"
 #' @import graph
 #' @import visNetwork
 #' @import RCurl
@@ -1024,9 +1024,21 @@ plot_kegg_image_pathway <- function(pathway, no_color_mode = T, mapping_data_typ
       }))
     } else {
       
+      if(length(highlight_color) > 1) {
+        if(length(highlight_color) == length(highlight_nodes)) {
+          highlight_color_vector <- setNames(object = highlight_color, nm = highlight_nodes)
+        } else {
+          stop("Error: highlighted nodes and their colors must be in the same length")
+        }
+      }
+      
       border_color <- unname(sapply(graphical_data$node_coords$node_id, function(x) {
         if(x %in% highlight_nodes) {
-          highlight_color
+          if(length(highlight_color) > 1) {
+            highlight_color_vector[x]
+          } else {
+            highlight_color
+          }
         } else {
           "#BFFFBF"
         }
