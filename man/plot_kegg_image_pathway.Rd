@@ -30,7 +30,7 @@ plot_kegg_image_pathway(
 
 \item{highlight_nodes}{single value of node id or a vector of ids to be highlighted in plotted pathway. Default value is NULL}
 
-\item{highlight_color}{Highlighed nodes color. Default values is "red"}
+\item{highlight_color}{Highlighed nodes color(s). Default values is "red"}
 }
 \description{
 Plots the pathway with colored nodes and labels
