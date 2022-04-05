@@ -279,8 +279,12 @@ determine.sink.nodes <- function(pathway){
 #' @param pathway pathway with mapped gene expression data
 #' @param influence_node sigle id of node or vector of node ids based on which partial influencse will be calculated.
 #' @param influence_direction in which direction node affects the signal of target node. possible values c("+", "-", "any"). Default value is "any"
+#' @param node_combinations number of node combinations for partial influence analysis. Note: number of PSF calculations increases by the exponent of combinations(N nodes^combinations). Default value is 1.
+#' @param nproc number of cpus to use for calculation. Default value is 1.
+#' @param get_influence_matrix When set to true influence matrix will be returned instead of influencial nodes. Each column in influence matrix represent the log ratio of default and neutralized node(s) psf profile.
+#' @import parallel
 #' @export
-calc_node_partial_influences <- function(pathway, influence_node, influence_direction = "any") {
+calc_node_partial_influences <- function(pathway, influence_node, influence_direction = "any", node_combinations = 1, nproc = 1, get_influence_matrix = FALSE) {
   
   if(!("signal.at.sink" %in% names(pathway))) {
     stop("Pleas provide pathway with evaluated activity")
@@ -288,17 +292,19 @@ calc_node_partial_influences <- function(pathway, influence_node, influence_dire
   
   psf_values <- unlist(graph::nodeData(pathway$graph, attr = "signal"))
   
-  influence_psf_mat <- sapply(graph::nodes(pathway$graph), function(x) {
-    
+  node_combs <- combn(graph::nodes(pathway$graph), node_combinations, simplify = F)
+  
+  psf_iterator <- function(node_combs) {
     iteration_graph <- pathway$graph
     
-    if(graph::nodeData(iteration_graph, x, attr = "type") == "gene") {
-      graph::nodeData(iteration_graph, x, attr = "expression") <- 1
-    }
+    graph::nodeData(iteration_graph, names(which(graph::nodeData(iteration_graph, node_combs, attr = "type") == "gene")), attr = "expression") <- 1
     
     unlist(graph::nodeData(psf.flow(iteration_graph, pathway$order, pathway$sink.nodes, split = TRUE, sum = FALSE)$graph, attr = "signal"))
-    
-  })
+  }
+  
+  influence_psf_mat <- parallel::mcmapply(psf_iterator, node_combs, mc.cores = nproc)
+  
+  colnames(influence_psf_mat) <- sapply(node_combs, function(x) {paste(x, collapse = "_")})
   
   psf_difference <- log(influence_psf_mat/psf_values)
   

@@ -31,7 +31,8 @@ Imports:
         gplots,
         shinyWidgets,
         shinycssloaders,
-        RCurl
+        RCurl,
+        parallel
 Depends:
     R (>= 3.5)
 Collate: 'kegg.functions.R' 'pathnet.functions.R'
