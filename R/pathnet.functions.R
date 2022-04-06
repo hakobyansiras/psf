@@ -111,8 +111,9 @@ psf.from.env.indata <- function(indata.fc){
 #' @param sum logical, default value is FALSE. When set to true pathway activity will be caculated via addition, when set to false then activity willbe calculated via multiplication
 #' @param map_exp_data logical, default value is TRUE. When set to false the expression data will not be mapped into pathway nodes and pathway node expression values will be used instead.
 #' @param return_only_signals logical, default value is FALSE. When set to true only PSF values of the pathway nodes will be retruned in the results. Set to TRUE when analyzing large datasets to reduce size of the output file.
+#' @param tmm_mode when set to true specific PSF configuration will be used for the pathway described in https://www.frontiersin.org/articles/10.3389/fgene.2021.662464/full
 #' @export
-psf.from.env.entrez.fc <- function(entrez.fc, kegg.collection, split = TRUE, calculate.significance = T, bst.steps = 200, sum = FALSE, map_exp_data = TRUE, return_only_signals = FALSE){
+psf.from.env.entrez.fc <- function(entrez.fc, kegg.collection, split = TRUE, calculate.significance = T, bst.steps = 200, sum = FALSE, map_exp_data = TRUE, return_only_signals = FALSE, tmm_mode = FALSE){
   psf.results.collection = list()
   psf.results.collections = list()
   for(c in 1:ncol(entrez.fc)){
@@ -136,7 +137,7 @@ psf.from.env.entrez.fc <- function(entrez.fc, kegg.collection, split = TRUE, cal
         }
         
 
-        psf.results.collection[[pathway]] = psf.flow(g, kegg.collection[[i]]$order, kegg.collection[[i]]$sink.nodes, split, sum = sum)
+        psf.results.collection[[pathway]] = psf.flow(g, kegg.collection[[i]]$order, kegg.collection[[i]]$sink.nodes, split, sum = sum, tmm_mode = tmm_mode)
 
         psf.results.collection[[pathway]] = c(psf.results.collection[[pathway]],
                                               attrs=list(kegg.collection[[i]]$attrs),

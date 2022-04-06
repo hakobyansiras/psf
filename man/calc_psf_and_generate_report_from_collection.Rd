@@ -9,7 +9,8 @@ calc_psf_and_generate_report_from_collection(
   exp_matrix,
   folder_name,
   calculate_significance = FALSE,
-  use_old_images = F
+  use_old_images = F,
+  coldata = NULL
 )
 }
 \arguments{
@@ -22,6 +23,8 @@ calc_psf_and_generate_report_from_collection(
 \item{calculate_significance}{logical, if true then psf function will also calculate significance for the PSF values by shuffling all the network nodes and checking if the resulted PSF values were calculated by chance. When set to true volcano plot will be generetaed in pdf report.}
 
 \item{use_old_images}{use olde kegg images(for use with curated pathway collection)}
+
+\item{coldata}{table of sample information where first column of the table corresponds to colnames of exp_matrix and the second column is a group information.}
 }
 \description{
 Calculates psf for given kegg pathway based on expression matrix and generates pdf report with colored pathways and plots

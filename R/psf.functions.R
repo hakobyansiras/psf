@@ -4,7 +4,7 @@ concatenate.summonds <- function(summonds){
 }
 
 
-psf.flow <- function(g, node.ordering, sink.nodes, split = TRUE, sum = FALSE, mult_normalization = FALSE) {
+psf.flow <- function(g, node.ordering, sink.nodes, split = TRUE, sum = FALSE, mult_normalization = FALSE, tmm_mode = FALSE) {
 
   #   show(i)
   #   k = 0
@@ -53,6 +53,12 @@ psf.flow <- function(g, node.ordering, sink.nodes, split = TRUE, sum = FALSE, mu
     #     if(names(node.order)[i]=="EntrezGene:10163")
     # show(i)
     parent.nodes <- graph::inEdges(nods[i], g)[[1]]
+    
+    if(tmm_mode) {
+      ## skipping nodes with FC value 1
+      parent.nodes <- parent.nodes[which(unlist(graph::nodeData(g, parent.nodes, attr = "signal")) != 1)]
+    }
+    
     node = nods[i]
     if (length(parent.nodes)>0) {
       #       node.exp <- nodeData(g, i, attr = "expression")[[1]]
@@ -127,9 +133,24 @@ psf.flow <- function(g, node.ordering, sink.nodes, split = TRUE, sum = FALSE, mu
             # cat(paste("beging: node",i, "signal:", in.signal, "\n"))
           }
         } else {
-          #Returns the product of signals without splitting - is for updateing, but applies only in this special case where all the rules are s*t, or 1/s*t
-          proportion = 1
-          node.signal <- node.exp*weight*prod(in.signal^impact)
+          
+          if(tmm_mode) {
+            if(length(in.signal) > 1) {
+              in.signal_adjusted <- weight*in.signal
+            } else {
+              in.signal_adjusted <- min(weight)*in.signal
+              impact <- min(impact)
+            }
+            
+            node.signal <- prod(node.exp*in.signal_adjusted^impact)
+            
+          } else {
+            #Returns the product of signals without splitting - is for updateing, but applies only in this special case where all the rules are s*t, or 1/s*t
+            proportion = 1
+            node.signal <- node.exp*weight*prod(in.signal^impact)
+          }
+          
+          
         }
       }
       graph::nodeData(g, nods[i], attr = "signal") <- node.signal

@@ -12,7 +12,8 @@ psf.from.env.entrez.fc(
   bst.steps = 200,
   sum = FALSE,
   map_exp_data = TRUE,
-  return_only_signals = FALSE
+  return_only_signals = FALSE,
+  tmm_mode = FALSE
 )
 }
 \arguments{
@@ -31,6 +32,8 @@ psf.from.env.entrez.fc(
 \item{map_exp_data}{logical, default value is TRUE. When set to false the expression data will not be mapped into pathway nodes and pathway node expression values will be used instead.}
 
 \item{return_only_signals}{logical, default value is FALSE. When set to true only PSF values of the pathway nodes will be retruned in the results. Set to TRUE when analyzing large datasets to reduce size of the output file.}
+
+\item{tmm_mode}{when set to true specific PSF configuration will be used for the pathway described in https://www.frontiersin.org/articles/10.3389/fgene.2021.662464/full}
 }
 \description{
 Calculates pathway activity with PSF algorithm for provided kegg collection based on expression fold change data
