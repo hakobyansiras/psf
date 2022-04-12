@@ -309,18 +309,22 @@ calc_node_partial_influences <- function(pathway, influence_node, influence_dire
   
   psf_difference <- log(influence_psf_mat/psf_values)
   
-  if(influence_direction == "any") {
-    ordered_influence_nodes <- sort(abs(colSums(psf_difference[influence_node,, drop = FALSE]))[which(abs(colSums(psf_difference[influence_node,, drop = FALSE])) > 0)], decreasing = T)
+  if(get_influence_matrix) {
+    return(psf_difference)
+  } else {
+    if(influence_direction == "any") {
+      ordered_influence_nodes <- sort(abs(colSums(psf_difference[influence_node,, drop = FALSE]))[which(abs(colSums(psf_difference[influence_node,, drop = FALSE])) > 0)], decreasing = T)
+    }
+    
+    if(influence_direction == "+") {
+      ordered_influence_nodes <- sort(colSums(psf_difference[influence_node,, drop = FALSE])[which(colSums(psf_difference[influence_node,, drop = FALSE]) > 0)], decreasing = T)
+    }
+    
+    if(influence_direction == "-") {
+      ordered_influence_nodes <- sort(colSums(psf_difference[influence_node,, drop = FALSE])[which(colSums(psf_difference[influence_node,, drop = FALSE]) < 0)])
+    }
+    
+    return(ordered_influence_nodes)
   }
-  
-  if(influence_direction == "+") {
-    ordered_influence_nodes <- sort(colSums(psf_difference[influence_node,, drop = FALSE])[which(colSums(psf_difference[influence_node,, drop = FALSE]) > 0)], decreasing = T)
-  }
-  
-  if(influence_direction == "-") {
-    ordered_influence_nodes <- sort(colSums(psf_difference[influence_node,, drop = FALSE])[which(colSums(psf_difference[influence_node,, drop = FALSE]) < 0)])
-  }
-  
-  return(ordered_influence_nodes)
   
 }
