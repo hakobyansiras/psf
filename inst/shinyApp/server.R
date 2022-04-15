@@ -32,7 +32,7 @@ kegg_data_downloader <- function(pathway_name) {
   
   image_path <- tempfile()
   
-  download.file(image, destfile = image_path, method = "auto")
+  download.file(image, destfile = image_path, method = "curl")
   
   img <- magick::image_read(image_path)
   
