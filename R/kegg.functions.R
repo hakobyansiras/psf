@@ -870,7 +870,15 @@ plot_kegg_image_pathway <- function(pathway, no_color_mode = T, mapping_data_typ
     if(use_old_images) {
       img_path <- system.file("extdata", "old_imgs", paste0(gsub("path:", "", pathway$attrs$name), ".png"), package="psf")
     } else {
-      img_path <- system.file("extdata", "pathway_imgs", paste0(gsub("path:", "", pathway$attrs$name), ".png"), package="psf")
+      if(file.exists(system.file("extdata", "pathway_imgs", paste0(gsub("path:", "", pathway$attrs$name), ".png"), package="psf"))) {
+        img_path <- system.file("extdata", "pathway_imgs", paste0(gsub("path:", "", pathway$attrs$name), ".png"), package="psf")
+      } else {
+        # image <- paste0("http://rest.kegg.jp/get/", pathway_id, "/image")
+        
+        img_path <- tempfile()
+        download.file(pathway$attrs$image, destfile = img_path, method = "curl")
+      }
+      
     }
     
     pathway_image = magick::image_read(img_path)
