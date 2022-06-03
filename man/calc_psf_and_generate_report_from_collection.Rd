@@ -10,7 +10,8 @@ calc_psf_and_generate_report_from_collection(
   folder_name,
   calculate_significance = FALSE,
   use_old_images = F,
-  coldata = NULL
+  coldata = NULL,
+  adj = c(0.48, 1)
 )
 }
 \arguments{
@@ -25,6 +26,8 @@ calc_psf_and_generate_report_from_collection(
 \item{use_old_images}{use olde kegg images(for use with curated pathway collection)}
 
 \item{coldata}{table of sample information where first column of the table corresponds to colnames of exp_matrix and the second column is a group information.}
+
+\item{adj}{two values in between 0 and 1 which specify the x and y adjustment of the node labels, with 0 for left/bottom, 1 for right/top, and 0.5 for centered. Default value is c(0.48, 1). On most devices values outside 0 and 1 will also work.}
 }
 \description{
 Calculates psf for given kegg pathway based on expression matrix and generates pdf report with colored pathways and plots

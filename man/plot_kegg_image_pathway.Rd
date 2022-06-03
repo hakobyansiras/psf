@@ -12,7 +12,8 @@ plot_kegg_image_pathway(
   use_old_images = FALSE,
   plot_type = "kegg",
   highlight_nodes = NULL,
-  highlight_color = "red"
+  highlight_color = "red",
+  adj = c(0.48, 1)
 )
 }
 \arguments{
@@ -31,6 +32,8 @@ plot_kegg_image_pathway(
 \item{highlight_nodes}{single value of node id or a vector of ids to be highlighted in plotted pathway. Default value is NULL}
 
 \item{highlight_color}{Highlighed nodes color(s). Default values is "red"}
+
+\item{adj}{two values in between 0 and 1 which specify the x and y adjustment of the node labels, with 0 for left/bottom, 1 for right/top, and 0.5 for centered. Default value is c(0.48, 1). On most devices values outside 0 and 1 will also work. Only applicable for KEGG visualization type.}
 }
 \description{
 Plots the pathway with colored nodes and labels

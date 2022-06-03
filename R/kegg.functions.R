@@ -797,11 +797,12 @@ plot_pathway <- function(g, sink.nodes = NULL, ...){
 #' @param use_old_images use_old_images use olde kegg images(for use with curated pathway collection).
 #' @param highlight_nodes single value of node id or a vector of ids to be highlighted in plotted pathway. Default value is NULL
 #' @param highlight_color Highlighed nodes color(s). Default values is "red"
+#' @param adj two values in between 0 and 1 which specify the x and y adjustment of the node labels, with 0 for left/bottom, 1 for right/top, and 0.5 for centered. Default value is c(0.48, 1). On most devices values outside 0 and 1 will also work. Only applicable for KEGG visualization type.
 #' @import graph
 #' @import visNetwork
 #' @import RCurl
 #' @export
-plot_kegg_image_pathway <- function(pathway, no_color_mode = T, mapping_data_type = "signal", log_norm = TRUE, use_old_images = FALSE, plot_type = "kegg", highlight_nodes = NULL, highlight_color = "red") {
+plot_kegg_image_pathway <- function(pathway, no_color_mode = T, mapping_data_type = "signal", log_norm = TRUE, use_old_images = FALSE, plot_type = "kegg", highlight_nodes = NULL, highlight_color = "red", adj = c(0.48, 1)) {
   
   
   exp_values_all <- unlist(graph::nodeData(pathway$graph, attr = "expression"))[which(unlist(graph::nodeData(pathway$graph, attr = "type")) == "gene")]
@@ -914,7 +915,7 @@ plot_kegg_image_pathway <- function(pathway, no_color_mode = T, mapping_data_typ
       graphics::text(x = coloring_set$x_center,
                      y = coloring_set$y_start,
                      labels = coloring_set$gr_name,
-                     col = color.genes$text_col, adj = c(0,0.2) + c(0.48, 1))
+                     col = color.genes$text_col, adj = c(0,0.2) + adj)
       
     }
     
@@ -922,7 +923,7 @@ plot_kegg_image_pathway <- function(pathway, no_color_mode = T, mapping_data_typ
       graphics::text(x = sink_node_graphics$x_end + 10,
                      y = sink_node_graphics$y_center - 30, cex = 3,
                      labels = rep("*", nrow(sink_node_graphics)),
-                     col = rep("#9ACD32", nrow(sink_node_graphics)), adj = c(0,0.2) + c(0.48, 1))
+                     col = rep("#9ACD32", nrow(sink_node_graphics)), adj = c(0,0.2) + adj)
     } else {
       highlight_set <- node_graphics[which(node_graphics[,"node_id"] %in% highlight_nodes),]
         
@@ -946,7 +947,7 @@ plot_kegg_image_pathway <- function(pathway, no_color_mode = T, mapping_data_typ
     text(x = c(magick::image_info(img)$width - 88, magick::image_info(img)$width - 30),
          y = c(70, 65), cex = c(1.5, 3),
          labels = c("Sink node", "*"),
-         col = c("#000000", "#9ACD32"), adj = c(0,0.2) + c(0.48, 1))
+         col = c("#000000", "#9ACD32"), adj = c(0,0.2) + adj)
     
     
     ## color grop nodes

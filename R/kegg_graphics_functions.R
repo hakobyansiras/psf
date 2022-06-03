@@ -89,7 +89,7 @@ graphical_data_generator <- function(pathway, include_changes = FALSE) {
 
 
 kegg_designer <- function(group_graphics, node_graphics, pathway_image,
-                          psf_output, color_bar_psf_mode = F, col_legend_title, plot_type = "boxplot") {
+                          psf_output, color_bar_psf_mode = F, col_legend_title, plot_type = "boxplot", adj = c(0.48, 1)) {
   
   color.genes <- psf_output$psf_colors
   color_bar_lims <- range(psf_output$mean_signal_values)
@@ -126,14 +126,14 @@ kegg_designer <- function(group_graphics, node_graphics, pathway_image,
     graphics::text(x = coloring_set$x_center,
          y = coloring_set$y_start,
          labels = coloring_set$gr_name,
-         col = color.genes$text_col, adj = c(0,0.2) + c(0.48, 1))
+         col = color.genes$text_col, adj = c(0,0.2) + adj)
     
   }
   
   graphics::text(x = sink_node_graphics$x_end + 10,
        y = sink_node_graphics$y_center - 30, cex = 3,
        labels = rep("*", nrow(sink_node_graphics)),
-       col = rep("#9ACD32", nrow(sink_node_graphics)), adj = c(0,0.2) + c(0.48, 1))
+       col = rep("#9ACD32", nrow(sink_node_graphics)), adj = c(0,0.2) + adj)
   
   
   ### scale color bar
@@ -151,7 +151,7 @@ kegg_designer <- function(group_graphics, node_graphics, pathway_image,
   text(x = c(magick::image_info(img)$width - 88, magick::image_info(img)$width - 30),
        y = c(70, 65), cex = c(1.5, 3),
        labels = c("Sink node", "*"),
-       col = c("#000000", "#9ACD32"), adj = c(0,0.2) + c(0.48, 1))
+       col = c("#000000", "#9ACD32"), adj = c(0,0.2) + adj)
   
   
   ## color grop nodes

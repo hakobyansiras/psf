@@ -5,13 +5,14 @@
 #' @param use_old_images use olde kegg images(for use with curated pathway collection)
 #' @param calculate_significance logical, if true then psf function will also calculate significance for the PSF values by shuffling all the network nodes and checking if the resulted PSF values were calculated by chance. When set to true volcano plot will be generetaed in pdf report.
 #' @param coldata table of sample information where first column of the table corresponds to colnames of exp_matrix and the second column is a group information.
+#' @param adj two values in between 0 and 1 which specify the x and y adjustment of the node labels, with 0 for left/bottom, 1 for right/top, and 0.5 for centered. Default value is c(0.48, 1). On most devices values outside 0 and 1 will also work.
 #' @import gplots
 #' @import ggplot2
 #' @import ggrepel
 #' @import magick
 #' @import grDevices
 #' @export
-calc_psf_and_generate_report_from_collection <- function(kegg_collection, exp_matrix, folder_name, calculate_significance = FALSE, use_old_images = F, coldata = NULL) {
+calc_psf_and_generate_report_from_collection <- function(kegg_collection, exp_matrix, folder_name, calculate_significance = FALSE, use_old_images = F, coldata = NULL, adj = c(0.48, 1)) {
   
   dir.create(folder_name)
   
@@ -36,7 +37,7 @@ calc_psf_and_generate_report_from_collection <- function(kegg_collection, exp_ma
       pathway_img_new <- kegg_designer(group_graphics = kegg_collection[[x]]$group_nodes, node_graphics = graphical_data$node_coords, 
                                        pathway_image = magick::image_read(img_path),
                                        psf_output = psf_output, color_bar_psf_mode = TRUE, 
-                                       col_legend_title = "Log PSF value", plot_type = "boxplot")
+                                       col_legend_title = "Log PSF value", plot_type = "boxplot", adj = adj)
       
       plots <- magick::image_graph(width = 1000, height = 800, res = 96)
       
@@ -121,7 +122,7 @@ calc_psf_and_generate_report_from_collection <- function(kegg_collection, exp_ma
         pathway_img_new <- kegg_designer(group_graphics = kegg_collection[[x]]$group_nodes, node_graphics = graphical_data$node_coords, 
                                          pathway_image = magick::image_read(img_path),
                                          psf_output = psf_output, color_bar_psf_mode = TRUE, 
-                                         col_legend_title = "Log PSF value", plot_type = "boxplot")
+                                         col_legend_title = "Log PSF value", plot_type = "boxplot", adj = adj)
         
         pathway_img_new <- image_annotate(pathway_img_new, y, size = 70)
         
