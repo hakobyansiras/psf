@@ -43,7 +43,7 @@ calc_psf_and_generate_report_from_collection <- function(kegg_collection, exp_ma
       
       if(ncol(exp_matrix) > 1) {
         gplots::heatmap.2(psf_output$sink_values_all, col = c(pal1(10), pal2(10)), trace = "none",
-                          Rowv = FALSE, Colv = FALSE, ylab = "Sink values", main = paste0(x, "Sink PSV values"),
+                          Rowv = FALSE, Colv = FALSE, ylab = "Sink values", main = paste0(x, "Sink PSF values"),
                           margin = c(10, 8), keysize = 1, key.title = "PSF log value",
                           dendrogram = 'none')
       }
