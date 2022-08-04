@@ -804,6 +804,14 @@ plot_pathway <- function(g, sink.nodes = NULL, ...){
 #' @export
 plot_kegg_image_pathway <- function(pathway, no_color_mode = T, mapping_data_type = "signal", log_norm = TRUE, use_old_images = FALSE, plot_type = "kegg", highlight_nodes = NULL, highlight_color = "red", adj = c(0.48, 1)) {
   
+  ### chechikng highlight nodes and their border colors
+  if(length(highlight_color) > 1) {
+    if(length(highlight_color) == length(highlight_nodes)) {
+      highlight_color_vector <- setNames(object = highlight_color, nm = highlight_nodes)
+    } else {
+      stop("Error: highlighted nodes and their colors must be in the same length")
+    }
+  }
   
   exp_values_all <- unlist(graph::nodeData(pathway$graph, attr = "expression"))[which(unlist(graph::nodeData(pathway$graph, attr = "type")) == "gene")]
   
@@ -919,20 +927,20 @@ plot_kegg_image_pathway <- function(pathway, no_color_mode = T, mapping_data_typ
       
     }
     
-    if(is.null(highlight_nodes)) {
-      graphics::text(x = sink_node_graphics$x_end + 10,
-                     y = sink_node_graphics$y_center - 30, cex = 3,
-                     labels = rep("*", nrow(sink_node_graphics)),
-                     col = rep("#9ACD32", nrow(sink_node_graphics)), adj = c(0,0.2) + adj)
-    } else {
+    ### adding sink node labels
+    graphics::text(x = sink_node_graphics$x_end + 10,
+                   y = sink_node_graphics$y_center - 30, cex = 3,
+                   labels = rep("*", nrow(sink_node_graphics)),
+                   col = rep("#9ACD32", nrow(sink_node_graphics)), adj = c(0,0.2) + adj)
+    
+    if(!is.null(highlight_nodes)) {
       highlight_set <- node_graphics[which(node_graphics[,"node_id"] %in% highlight_nodes),]
         
       rect( highlight_set$x_start, 
             highlight_set$y_start, 
             highlight_set$x_end, 
             highlight_set$y_end, 
-            border = highlight_color, lty = "solid", lwd=2, col = adjustcolor( "#a3297a", alpha.f = 0))
-        
+            border = highlight_color_vector[highlight_set$node_id], lty = "solid", lwd=2, col = adjustcolor( "#a3297a", alpha.f = 0))
     }
     
     
@@ -1032,14 +1040,6 @@ plot_kegg_image_pathway <- function(pathway, no_color_mode = T, mapping_data_typ
         }
       }))
     } else {
-      
-      if(length(highlight_color) > 1) {
-        if(length(highlight_color) == length(highlight_nodes)) {
-          highlight_color_vector <- setNames(object = highlight_color, nm = highlight_nodes)
-        } else {
-          stop("Error: highlighted nodes and their colors must be in the same length")
-        }
-      }
       
       border_color <- unname(sapply(graphical_data$node_coords$node_id, function(x) {
         if(x %in% highlight_nodes) {
