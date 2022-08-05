@@ -925,7 +925,7 @@ plot_kegg_image_pathway <- function(pathway, no_color_mode = T, mapping_data_typ
       )
       
       graphics::text(x = coloring_set$x_center,
-                     y = coloring_set$y_start + y_text_adj,
+                     y = coloring_set$y_start + y_adj_text,
                      labels = coloring_set$gr_name,
                      col = color.genes$text_col, adj = c(0,0.2) + adj)
       
@@ -933,7 +933,7 @@ plot_kegg_image_pathway <- function(pathway, no_color_mode = T, mapping_data_typ
     
     ### adding sink node labels
     graphics::text(x = sink_node_graphics$x_end + 10,
-                   y = sink_node_graphics$y_center - 30 + y_sink_adj, cex = 3,
+                   y = sink_node_graphics$y_center - 30 + y_adj_sink, cex = 3,
                    labels = rep("*", nrow(sink_node_graphics)),
                    col = rep("#9ACD32", nrow(sink_node_graphics)), adj = c(0,0.2) + adj)
     
@@ -957,7 +957,7 @@ plot_kegg_image_pathway <- function(pathway, no_color_mode = T, mapping_data_typ
     }
     
     text(x = c(magick::image_info(img)$width - 88, magick::image_info(img)$width - 30),
-         y = c(70, 65 + y_sink_adj - 6), cex = c(1.5, 3),
+         y = c(70, 65 + y_adj_sink - 6), cex = c(1.5, 3),
          labels = c("Sink node", "*"),
          col = c("#000000", "#9ACD32"), adj = c(0,0.2) + adj)
     
