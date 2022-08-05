@@ -811,6 +811,8 @@ plot_kegg_image_pathway <- function(pathway, no_color_mode = T, mapping_data_typ
     } else {
       stop("Error: highlighted nodes and their colors must be in the same length")
     }
+  } else {
+    highlight_color_vector <- setNames(object = rep(highlight_color, length(highlight_nodes)), nm = highlight_nodes)
   }
   
   exp_values_all <- unlist(graph::nodeData(pathway$graph, attr = "expression"))[which(unlist(graph::nodeData(pathway$graph, attr = "type")) == "gene")]
