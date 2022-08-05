@@ -14,7 +14,8 @@ plot_kegg_image_pathway(
   highlight_nodes = NULL,
   highlight_color = "red",
   adj = c(0.48, 1),
-  y_adj = 0
+  y_adj_text = 0,
+  y_adj_sink = 0
 )
 }
 \arguments{
@@ -36,7 +37,9 @@ plot_kegg_image_pathway(
 
 \item{adj}{two values in between 0 and 1 which specify the x and y adjustment of the node labels, with 0 for left/bottom, 1 for right/top, and 0.5 for centered. Default value is c(0.48, 1). On most devices values outside 0 and 1 will also work. Only applicable for KEGG visualization type.}
 
-\item{y_adj}{Numeric value to adjust Y position of node and sink labels. Depending on R version this value should be adjusted to have accurate text alignment. Default value is 0.}
+\item{y_adj_text}{Numeric value to adjust Y position of node labels. Depending on R version this value should be adjusted to have accurate text alignment. Default value is 0.}
+
+\item{y_adj_sink}{Numeric value to adjust Y position of sink node sign labels. Depending on R version this value should be adjusted to have accurate alignment. Default value is 0.}
 }
 \description{
 Plots the pathway with colored nodes and labels

@@ -798,20 +798,13 @@ plot_pathway <- function(g, sink.nodes = NULL, ...){
 #' @param highlight_nodes single value of node id or a vector of ids to be highlighted in plotted pathway. Default value is NULL
 #' @param highlight_color Highlighed nodes color(s). Default values is "red"
 #' @param adj two values in between 0 and 1 which specify the x and y adjustment of the node labels, with 0 for left/bottom, 1 for right/top, and 0.5 for centered. Default value is c(0.48, 1). On most devices values outside 0 and 1 will also work. Only applicable for KEGG visualization type.
-#' @param y_adj Numeric value to adjust Y position of node and sink labels. Depending on R version this value should be adjusted to have accurate text alignment. Default value is 0.
+#' @param y_adj_text Numeric value to adjust Y position of node labels. Depending on R version this value should be adjusted to have accurate text alignment. Default value is 0.
+#' @param y_adj_sink Numeric value to adjust Y position of sink node sign labels. Depending on R version this value should be adjusted to have accurate alignment. Default value is 0.
 #' @import graph
 #' @import visNetwork
 #' @import RCurl
 #' @export
-plot_kegg_image_pathway <- function(pathway, no_color_mode = T, mapping_data_type = "signal", log_norm = TRUE, use_old_images = FALSE, plot_type = "kegg", highlight_nodes = NULL, highlight_color = "red", adj = c(0.48, 1), y_adj = 0) {
-  
-  if(y_adj > 0) {
-    y_text_adj <- y_adj
-    y_sink_adj <- y_adj + 23
-  } else {
-    y_text_adj <- 0
-    y_sink_adj <- 0
-  }
+plot_kegg_image_pathway <- function(pathway, no_color_mode = T, mapping_data_type = "signal", log_norm = TRUE, use_old_images = FALSE, plot_type = "kegg", highlight_nodes = NULL, highlight_color = "red", adj = c(0.48, 1), y_adj_text = 0, y_adj_sink = 0) {
   
   ### chechikng highlight nodes and their border colors
   if(length(highlight_color) > 1) {
