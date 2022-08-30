@@ -1,5 +1,5 @@
 ## reading manually selected pathway list
-selected_pathway_set <- read.delim(file = "/home/siras/PSFC/inst/extdata/kgmls/selected_pathways.txt", sep = "\t", stringsAsFactors = F)
+selected_pathway_set <- read.delim(file = "/home/siras/PSFC/inst/extdata/selected_pathways.txt", sep = "\t", stringsAsFactors = F)
 
 ## building keggres links data frame for downloading
 selected_pathway_set <- data.frame(pathway_code = selected_pathway_set$pathway_code,

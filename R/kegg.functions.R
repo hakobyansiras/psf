@@ -1095,7 +1095,7 @@ plot_kegg_image_pathway <- function(pathway, no_color_mode = T, mapping_data_typ
       
       magick::image_write(magick::image_trim(legend_img, fuzz = 0), path = temp_legend)
       
-      legend_path <- paste('data:image/png;base64', RCurl::base64Encode(readBin(temp_legend, 'raw', file.info('~/legend.png')[1, 'size']), 'txt'), sep = ',')
+      legend_path <- paste('data:image/png;base64', RCurl::base64Encode(readBin(temp_legend, 'raw', file.info(temp_legend)[1, 'size']), 'txt'), sep = ',')
       
       legend_data_frame <- data.frame(
         id = as.character(max(as.integer(graphical_data$node_coords$node_id)) + 1),
