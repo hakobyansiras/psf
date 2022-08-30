@@ -4,7 +4,7 @@ concatenate.summonds <- function(summonds){
 }
 
 
-psf.flow <- function(g, node.ordering, sink.nodes, split = TRUE, sum = FALSE, mult_normalization = FALSE, tmm_mode = FALSE) {
+psf.flow <- function(g, node.ordering, sink.nodes, split = TRUE, sum = FALSE, mult_normalization = FALSE, tmm_mode = FALSE, tmm_updated_mode = FALSE) {
 
   #   show(i)
   #   k = 0
@@ -150,7 +150,16 @@ psf.flow <- function(g, node.ordering, sink.nodes, split = TRUE, sum = FALSE, mu
               impact <- min(impact)
             }
             
-            node.signal <- prod(node.exp*in.signal_adjusted^impact)
+            if(tmm_updated_mode) {
+              
+              affecting_in_signal <- in.signal_adjusted^impact
+              
+              node.signal <- prod(c(node.exp, affecting_in_signal))
+            } else {
+              node.signal <- prod(node.exp*in.signal_adjusted^impact)
+            }
+            
+            
             
           } else {
             #Returns the product of signals without splitting - is for updateing, but applies only in this special case where all the rules are s*t, or 1/s*t
