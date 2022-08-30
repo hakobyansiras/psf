@@ -6,7 +6,8 @@
 \usage{
 calc_node_partial_influences(
   pathway,
-  influence_node,
+  exp_fc_matrix,
+  influenced_node,
   influence_direction = "any",
   node_combinations = 1,
   nproc = 1,
@@ -14,11 +15,13 @@ calc_node_partial_influences(
 )
 }
 \arguments{
-\item{pathway}{pathway with mapped gene expression data}
+\item{pathway}{Pathway onbject.}
 
-\item{influence_node}{sigle id of node or vector of node ids based on which partial influencse will be calculated.}
+\item{exp_fc_matrix}{expression fold change matrix with gene etrez id rownames.}
 
-\item{influence_direction}{in which direction node affects the signal of target node. possible values c("+", "-", "any"). Default value is "any"}
+\item{influenced_node}{sigle id of node or vector of node ids based on which partial influencse will be calculated.}
+
+\item{influence_direction}{in which direction node affects the signal of target node. Possible values c("+", "-", "any"). Default value is "any".}
 
 \item{node_combinations}{number of node combinations for partial influence analysis. Note: number of PSF calculations increases by the exponent of combinations(N nodes^combinations). Default value is 1.}
 
