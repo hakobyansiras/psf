@@ -287,16 +287,25 @@ determine.sink.nodes <- function(pathway){
 #' @param get_influence_matrix When set to true influence matrix will be returned instead of influencial nodes. Each column in influence matrix represent the log ratio of default and neutralized node(s) psf profile.
 #' @import parallel
 #' @export
-calc_node_partial_influences <- function(pathway, exp_fc_matrix, influenced_node, influence_direction = "any", node_combinations = 1, nproc = 1, get_influence_matrix = FALSE) {
+calc_node_partial_influences <- function(pathway, exp_fc_matrix = NULL, influenced_node, influence_direction = "any", node_combinations = 1, nproc = 1, get_influence_matrix = FALSE) {
   
   if(!("signal.at.sink" %in% names(pathway))) {
-    stop("Pleas provide pathway with evaluated activity")
+    if(is.null(exp_fc_matrix)) {
+      stop("Please provide FC matrix or pathway graph with evaluated activity")
+    } else {
+      
+      entrez.column <- as.matrix(exp_fc_matrix[,1])
+      
+      graph::nodeData(pathway$graph, attr = "signal") <- 1
+      
+      g = map.gene.data(pathway$graph, entrez.column)
+      
+      psf_values <- unlist(graph::nodeData(psf.flow(g = pathway$graph, node.ordering = pathway$order, sink.nodes = pathway$sink.nodes, split = TRUE, sum = FALSE, mult_normalization = FALSE, tmm_mode = FALSE)$g, attr = "signal"))
+    }
+  } else {
+    psf_values <- unlist(graph::nodeData(pathway$graph, attr = "signal"))
   }
   
-  
-  psf_values <- unlist(graph::nodeData(psf.flow(g = pathway$graph, node.ordering = pathway$order, sink.nodes = pathway$sink.nodes, split = TRUE, sum = FALSE, mult_normalization = FALSE, tmm_mode = FALSE)$g, attr = "signal"))
-  
-  # psf_values <- unlist(graph::nodeData(pathway$graph, attr = "signal"))
   
   node_combs <- combn(graph::nodes(pathway$graph), node_combinations, simplify = F)
   
