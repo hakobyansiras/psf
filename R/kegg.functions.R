@@ -1085,6 +1085,7 @@ plot_kegg_image_pathway <- function(pathway, no_color_mode = T, mapping_data_typ
     
     if(!is.null(color.genes)) {
       
+      magick::autoviewer_disable() ### to avoid legend plotting before netowrk rendering
       legend_img <- magick::image_device(width = 480, height = 480)
       plot.new()
       
