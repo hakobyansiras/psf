@@ -192,10 +192,10 @@ load(system.file("extdata", "edited_pathways_new.RData", package="psf"))
 
 
 #### calculating psf for full and coding gene expression Deseq FC data (calculation will take rougly 8 hour, you can load precalculate data with command below) ####
-load("../trial_proj/psf_with_significance.RData")
+load("psf_with_significance.RData")
 
 ## uncomment the script to run psf analysis
-# load("../trial_proj/psf_significance_calc_functions.RData")
+# load("psf_significance_calc_functions.RData")
 #
 # mel_psf_single_norm <- psf_calc_with_significance(fc_matrix = gene_fc_matrix, 
 #                                                   pathway_collection = edited_pathways_new, 
