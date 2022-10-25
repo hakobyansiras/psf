@@ -9,10 +9,8 @@ Pathway signal flow calculator
 # Installation
 
 ```
-install.packages("devtools")
+install.packages("remotes")
 
-library(devtools)
-install_github(repo="hakobyansiras/PSFC",
-    build_vignette=TRUE,
-    dependencies=TRUE)
+library(remotes)
+remotes::install_github("hakobyansiras/PSFC")
 ```
