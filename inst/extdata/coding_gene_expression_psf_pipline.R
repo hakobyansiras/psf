@@ -11,6 +11,7 @@ library(rtracklayer)
 library(IsoformSwitchAnalyzeR)
 library(venn)
 library(plotly)
+library(ggplot2)
 
 ### loading annotation (unccomment and run if you prefer to run preprocessing too)
 # gencode32 <- rtracklayer::import('../isoform_bmu_calculation_for_melanoma/gencode.v32.chr_patch_hapl_scaff.annotation.gtf')
