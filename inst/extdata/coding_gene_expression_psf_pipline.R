@@ -233,9 +233,14 @@ rownames(psf_data_isoform) <- psf_data_isoform$node_label
 
 psf_data_isoform_filtered <- psf_data_isoform[which(psf_data_isoform$isoform_fc_pval < 0.05), ]
 
-
+### building venn diagram to comaper full and coding gene expression based significant pathway sink nodes
 venn::venn(list("Full gene" = psf_data_gene_filtered$node_label, "Coding gene" = psf_data_isoform_filtered$node_label), 
            ggplot = F, zcolor = "style", box = F, ilabels = T, lty = 1, ilcs = 1.3, sncs = 1.5, lwd = 1.3)
+
+### Scatterplot for full and coding gene expression PSF compariosn
+ggplot(data.frame(Full_gene = log10(psf_data_gene$gene_fc), Coding_gene = log10(psf_data_isoform$isoform_fc)), aes(x=Full_gene, y=Coding_gene)) + 
+  geom_point(size = 3) + xlab("Full gene log10 PSF values") + ylab("Coding gene log10 PSF values") + 
+  theme(axis.title = element_text(size = 32), axis.text = element_text(size = 28))
 
 
 ### filtering only coding expression significant pathway sinks
@@ -321,7 +326,3 @@ psf_diff_barplot_builder <- function(pathway_name) {
 
 ### plotting psf differences
 psf_diff_barplot_builder("cAMP_signaling_pathway")
-
-
-
-
