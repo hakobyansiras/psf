@@ -1,10 +1,9 @@
-# PSFC
+# PSF toolkit
 
 <!-- badges: start -->
 [![R-CMD-check](https://github.com/hakobyansiras/PSFC/workflows/R-CMD-check/badge.svg)](https://github.com/hakobyansiras/PSFC/actions)
 <!-- badges: end -->
 
-**PSF toolkit**  
 Pathway editor and signal flow calculator
 
 # Installation
