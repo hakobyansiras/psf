@@ -12,7 +12,7 @@ Pathway editor and signal flow calculator
 install.packages("devtools")
 
 library(devtools)
-install_github(repo="hakobyansiras/PSFC",
+install_github(repo="hakobyansiras/psf",
     build_vignette=TRUE,
     dependencies=TRUE)
 ```
