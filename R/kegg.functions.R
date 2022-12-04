@@ -741,53 +741,6 @@ remove.disconnected.nodes <- function(g){
   return(g)
 }
 
-#' Plots the pathway with KEGG layout based on x and y coordinates taken from KGML file.
-#' 
-#' @param g graphNEL graph
-#' @param sink.nodes list of sink node ids which will be colored in red
-#' @param ...	Arguments to be passed to methods, such as graphical parameters (see par).
-#' @importFrom "igraph" "igraph.from.graphNEL"
-#' @importFrom "igraph" "V"
-#' @export
-plot_pathway <- function(g, sink.nodes = NULL, ...){
-  igr = igraph::igraph.from.graphNEL(g)
-  node.labels = graph::nodeData(g, graph::nodes(g), "label")
-  igraph::V(igr)$name = node.labels
-  #for now
-  # igraph::V(igr)$label = graph::nodeData(g, graph::nodes(g), "kegg.id")
-  igraph::V(igr)$ID = graph::nodes(g)
-
-  coords = matrix(data = NA, nrow = length(graph::nodes(g)), ncol = 2)
-  coords.x = as.numeric(unlist(graph::nodeData(g, graph::nodes(g), "kegg.gr.x")))
-  coords.y = as.numeric(unlist(graph::nodeData(g, graph::nodes(g), "kegg.gr.y")))
-  coords.y = (max(coords.y) - coords.y)
-  igraph::V(igr)$x = coords.x
-  igraph::V(igr)$y = coords.y
-
-  node.shapes = rep_len("circle", length(graph::nodes(g)))
-  names(node.shapes) = graph::nodes(g)
-  for(node in graph::nodes(g)){
-    if(graph::nodeData(g, node, "kegg.type") == "gene")
-      node.shapes[node] = "rectangle"
-  }
-
-  lapply(names(g@edgeData@data), function(x) {
-    get.edge.type(g,
-                  strsplit(x, split="|", fixed = T)[[1]][1],
-                  strsplit(x, split="|", fixed = T)[[1]][2])
-  })
-
-
-  igraph::V(igr)$vertex.shape = node.shapes
-  if(!is.null(sink.nodes)){
-    igraph::V(igr)$color <- ifelse((igraph::V(igr)$ID %in% sink.nodes), "red", "blue")
-  }
-
-  igraph::tkplot(igr, vertex.shape = igraph::V(igr)$vertex.shape)
-  plot(igr, vertex.shape = igraph::V(igr)$shape, ...)
-
-}
-
 #' Plots the pathway with colored nodes and labels
 #' @param pathway list object from kegg collection
 #' @param plot_type network visualization type. Possible values c("kegg", "visnet"). When kegg option is used the bathway will be plotted over kegg png image. With visnet option function will plot interactive network with kegg layou. 

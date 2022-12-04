@@ -41,7 +41,7 @@ Collate: 'kegg.functions.R' 'pathnet.functions.R'
          'psf.structures.node-getValue-method.R' 'scriptlog.R'
          'psf.report.sheets.R'
          'psf.graph.functions.R' 'run_interactive_app.R' 
-         'kegg_graphics_functions.R' 'psf_calculation_and_coloring.R' 'psf_report_generator.R'
+         'kegg_graphics_functions.R' 'psf_calculation_and_coloring.R' 'psf_report_generator.R' 'fast_psf_functions.R'
 Suggests:
     knitr, 
     testthat,

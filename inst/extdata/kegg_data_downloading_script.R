@@ -107,12 +107,36 @@ edited_pathways_new <- lapply(edited_pathways_new, function(x) {
   
 })
 
+edited_pathways_new <- lapply(edited_pathways_new, function(x) {
+  
+  edge_pairs <- strsplit(names(unlist(graph::edgeData(x$graph, attr = "impact"))), split = "|", fixed = T)
+  
+  for(i in 1:length(edge_pairs)) {
+    
+    graph::edgeData(x$graph, edge_pairs[[i]][1], edge_pairs[[i]][2], attr = "impact") <- as.numeric(graph::edgeData(x$graph, edge_pairs[[i]][1], edge_pairs[[i]][2], attr = "impact"))
+    
+  }
+  
+  x
+})
+
+# edited_pathways_new$PI3K_Akt_signaling_pathway$graph <- graph::removeNode(names(which(is.na(graph::nodeData(edited_pathways_new$PI3K_Akt_signaling_pathway$graph, attr = "kegg.type")))), edited_pathways_new$PI3K_Akt_signaling_pathway$graph)
+
+edited_pathways_new$PI3K_Akt_signaling_pathway$order <- psf::order.nodes(edited_pathways_new$PI3K_Akt_signaling_pathway$graph)
+
+edited_pathways_new$PI3K_Akt_signaling_pathway$sink.nodes <- psf::determine.sink.nodes(edited_pathways_new$PI3K_Akt_signaling_pathway)
+
 ### removing incorrectly connected map which was clasified as a sink node
 edited_pathways_new$MAPK_signaling_pathway$graph <- graph::removeEdge(from = "47", to = "42", graph = edited_pathways_new$MAPK_signaling_pathway$graph)
 edited_pathways_new$MAPK_signaling_pathway$graph <- psf::set.edge.impacts(edited_pathways_new$MAPK_signaling_pathway$graph)
 edited_pathways_new$MAPK_signaling_pathway$order <- psf::order.nodes(edited_pathways_new$MAPK_signaling_pathway$graph)
 edited_pathways_new$MAPK_signaling_pathway$sink.nodes <- psf::determine.sink.nodes(edited_pathways_new$MAPK_signaling_pathway)
 
+### removing self connected node edge from Complement_and_coagulation_cascades pathway
+edited_pathways_new$Complement_and_coagulation_cascades$graph <- graph::removeEdge(from = "31", to = "31", graph = edited_pathways_new$Complement_and_coagulation_cascades$graph)
+edited_pathways_new$Complement_and_coagulation_cascades$graph <- psf::set.edge.impacts(edited_pathways_new$Complement_and_coagulation_cascades$graph)
+edited_pathways_new$Complement_and_coagulation_cascades$order <- psf::order.nodes(edited_pathways_new$Complement_and_coagulation_cascades$graph)
+edited_pathways_new$Complement_and_coagulation_cascades$sink.nodes <- psf::determine.sink.nodes(edited_pathways_new$Complement_and_coagulation_cascades)
 
 
 save(edited_pathways_new, kegg_compounds_to_full_name, entrez_to_symbol, file = "inst/extdata/edited_pathways_new.RData")

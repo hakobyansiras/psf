@@ -64,25 +64,22 @@ psf.flow <- function(g, node.ordering, sink.nodes, split = TRUE, sum = FALSE, mu
       #       node.exp <- nodeData(g, i, attr = "expression")[[1]]
       node.exp = E[i,1]
       
+      in.signal <- unlist(graph::nodeData(g, parent.nodes, attr = "signal"))
+      
+      ### Handle parent node signals in loops
+      if(any(!(parent.nodes %in% nods[1:i]))) {
+        non_processed_parents <- parent.nodes[which(!(parent.nodes %in% nods[1:i]))]
+        
+        in.signal[which(!(parent.nodes %in% nods[1:i]))] <- unlist(graph::nodeData(g, non_processed_parents, attr = "expression"))
+      }
+      
       ### input signal processing of function nodes
       if("psf_function" %in% names(graph::nodeDataDefaults(g))) {
         if(unname(unlist(graph::nodeData(g, node, attr = "psf_function"))) %in% c("min", "max", "sum")) {
           in.signal <- get(unname(unlist(graph::nodeData(g, node, attr = "psf_function"))), envir = globalenv())(unlist(graph::nodeData(g, parent.nodes, attr = "signal")))
-        } else {
-          in.signal <- unlist(graph::nodeData(g, parent.nodes, attr = "signal"))
         }
-      } else {
-        in.signal <- unlist(graph::nodeData(g, parent.nodes, attr = "signal"))
       }
-      # if("psf_function" %in% names(graph::nodeDataDefaults(g)) & unname(unlist(graph::nodeData(g, node, attr = "psf_function"))) %in% c("min", "max", "sum")) {
-      #   in.signal <- get(unname(unlist(graph::nodeData(g, node, attr = "psf_function"))), envir = globalenv())(unlist(graph::nodeData(g, parent.nodes, attr = "signal")))
-      # } else {
-      #   in.signal <- unlist(graph::nodeData(g, parent.nodes, attr = "signal"))
-      # }
-      pi = which(nods %in% parent.nodes)
-      #       show(i)
-      #       cat(length(parent.nodes), "\n")
-      #       in.signal = S[parent.nodes,1]
+      
       node.signal <- graph::nodeData(g, nods[i], attr = "signal")[[1]]
       impact = I[parent.nodes,nods[i]]
       weight = W[parent.nodes,nods[i]]

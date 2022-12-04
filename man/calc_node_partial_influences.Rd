@@ -6,7 +6,7 @@
 \usage{
 calc_node_partial_influences(
   pathway,
-  exp_fc_matrix,
+  exp_fc_matrix = NULL,
   influenced_node,
   influence_direction = "any",
   node_combinations = 1,
