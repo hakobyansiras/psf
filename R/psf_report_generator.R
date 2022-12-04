@@ -90,7 +90,7 @@ calc_psf_and_generate_report_from_collection <- function(kegg_collection, exp_ma
         ggsave("volcano_plot.png", plot = volcano_plot, device = "png", path = NULL,
                scale = 1, width = 1000, height = 800, units = "px",
                dpi = 96, limitsize = TRUE)
-        
+          
         volcano_plot_img <- image_read('volcano_plot.png')
         
         file.remove('volcano_plot.png')
