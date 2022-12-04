@@ -1,4 +1,4 @@
-#### Please download data files from Zenodo () and put the files in R working directory
+#### Please download data file from Zenodo (https://zenodo.org/record/7396399/files/isoform_analysis_files.RData?download=1) and put it in R working directory
 #### NOTE you can load preprocessed big files from RData file with command bellow
 load("isoform_analysis_files.RData")
 
