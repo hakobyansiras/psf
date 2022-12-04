@@ -326,8 +326,4 @@ psf_diff_barplot_builder <- function(pathway_name) {
 }
 
 ### plotting psf differences
-<<<<<<< HEAD
 psf_diff_barplot_builder("cAMP_signaling_pathway")
-=======
-psf_diff_barplot_builder("cAMP_signaling_pathway")
->>>>>>> 4f40a51f2f320fee929931ac3021bcd66925f422
