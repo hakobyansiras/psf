@@ -642,6 +642,9 @@ plot_pathway <- function(pathway, plot_type = "visnet",
                                 text_col = unname(sapply(node_colors, function(x) {c( "black", "white")[  1+(sum( col2rgb(x) *c(299, 587,114))/1000 < 123) ]})),
                                 stringsAsFactors = F
       )
+      
+      node_colors <- node_colors[which(node_colors$node_id %in% graph::nodes(pathway$graph)[which(unlist(graph::nodeData(pathway$graph, attr = "type")) != "map")]),]
+      
     } else {
       stop("Please provide pathway with evalueated activity")
     }  
