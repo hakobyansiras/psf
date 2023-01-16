@@ -35,8 +35,8 @@ melanoma_psf <- run_psf(entrez.fc = melanoma_fc, kegg.collection = edited_pathwa
 
 ### plotting KEGG image based PI3K_Akt_signaling_pathway with colorcoded nodes. 
 plot_pathway(melanoma_psf$PI3K_Akt_signaling_pathway, plot_type = "kegg", 
-             color_nodes = "psf_activities", sample_id = "mean", log_norm = T, plot_sink_values = TRUE,
-             use_old_images = T)
+             color_nodes = "psf_activities", sample_id = "mean", log_norm = T, 
+             plot_sink_values = TRUE, use_old_images = T)
 
 ### generating PDF reports for PSF analyzed pathways.
 generate_psf_report(psf_list = melanoma_psf, folder_name = "example_psf_report", 
