@@ -579,18 +579,20 @@ run_pi <- function(pathway, influenced_node, influence_direction = "any", node_c
 #' @param color_nodes type of node values to be visualized. When value type is specified pathway nodes will be color coded with expression FC values or PSF values and color legend will be added to the pathway plot. Possible values are c(NULL, "psf_activities", "exp_fc"). Default value is NULL.
 #' @param sample_id name of the sample which will be used to visualize psf or exp fc values on pathway. To get averaged values accross samples set value to "mean". Default value is "mean". 
 #' @param log_norm log transform PSF and expression values before color mapping. Default value is TRUE.
-#' @param use_old_images use old kegg images(for use with curated pathway collection). Default value is FALSE.
 #' @param highlight_nodes single value of node id or a vector of ids to be highlighted in plotted pathway. Default value is NULL.
 #' @param highlight_color Highlighted nodes color(s). Default values is "red".
+#' @param plot_sink_values If set to TRUE then pathway activity values of terminal (sink) nodes will be plotted on the right side of the pathway (boxplots for multiple samples, barplot for single sample). Default value is FALSE. 
 #' @param y_adj_text Numeric value to adjust Y position of node labels. Depending on R version this value should be adjusted to have accurate text alignment. Default value is 0.
 #' @param y_adj_sink Numeric value to adjust Y position of sink node sign labels. Depending on R version this value should be adjusted to have accurate alignment. Default value is 0.
+#' @param use_old_images use old kegg images(for use with curated pathway collection). Default value is FALSE.
 #' @import graph
+#' @import ggplot2
 #' @import visNetwork
 #' @import RCurl
 #' @export
 plot_pathway <- function(pathway, plot_type = "visnet",
                          color_nodes = NULL, sample_id = "mean", log_norm = T, 
-                         highlight_nodes = NULL, highlight_color = "red", # hover_data = "all"
+                         highlight_nodes = NULL, highlight_color = "red", plot_sink_values = F,
                          y_adj_text = 0, y_adj_sink = 0, use_old_images = F) {
   
   ### chechikng highlight nodes and their border colors
@@ -649,6 +651,12 @@ plot_pathway <- function(pathway, plot_type = "visnet",
       stop("Please provide pathway with evalueated activity")
     }  
     
+    if(color_nodes == "psf_activities") {
+      col_legend_title = ifelse(log_norm, "Log PSF value", "PSF value")
+    } else {
+      col_legend_title = ifelse(log_norm, "Log FC value", "FC value")
+    }
+    
   } else {
     node_colors <- NULL
   }
@@ -658,12 +666,6 @@ plot_pathway <- function(pathway, plot_type = "visnet",
   
   node_graphics <- graphical_data$node_coords
   
-  
-  if(color_nodes == "psf_activities") {
-    col_legend_title = ifelse(log_norm, "Log PSF value", "PSF value")
-  } else {
-    col_legend_title = ifelse(log_norm, "Log FC value", "FC value")
-  }
   
   if(plot_type == "kegg") {
     if(use_old_images) {
@@ -734,8 +736,6 @@ plot_pathway <- function(pathway, plot_type = "visnet",
     }
     
     
-    
-    
     ### scale color bar
     if(!is.null(color_nodes)) {
       color_legend_maker(x = magick::image_info(img)$width - 230, y = 50, leg = 200, cols = c(pal1(10), pal2(10)), title = col_legend_title, lims = range(pathway_node_values), digits=3, prompt=FALSE,
@@ -748,7 +748,7 @@ plot_pathway <- function(pathway, plot_type = "visnet",
          col = c("#000000", "#9ACD32"), adj = c(0,0.2) + c(0.48, 1))
     
     
-    ## color grop nodes
+    ## color group nodes
     if(length(pathway$group_nodes) > 0 ) {
       lapply(pathway$group_nodes, function(z) {
         graphics::rect( z$kegg.gr.x-z$kegg.gr.width*0.5, 
@@ -762,7 +762,78 @@ plot_pathway <- function(pathway, plot_type = "visnet",
     
     dev.off()
     
-    return(img)
+    if(plot_sink_values) {
+      if(mapping_data) {
+        
+        sink_names <- unlist(graph::nodeData(pathway$graph, pathway$sink.nodes, attr = "label"))
+        
+        sink_order_by_coord <- order(as.integer(unname(unlist(graph::nodeData(pathway$graph, pathway$sink.nodes, attr = "kegg.gr.y")))), decreasing = T)
+        
+        repeating_sinks <- table(sink_names)[which(table(sink_names) > 1)]
+        
+        if(length(repeating_sinks) > 0) {
+          for(i in 1:length(repeating_sinks)) {
+            
+            sink_names[which(sink_names == names(repeating_sinks[i]))] <- sapply(1:repeating_sinks[i], function(x) {paste0(paste(rep(" ", x - 1), collapse = ""), names(repeating_sinks[i]))})
+            
+          }
+        }
+        
+        psf_activities_vec <- as.vector(pathway$psf_activities[pathway$sink.nodes,])
+        
+        names(psf_activities_vec) <- rep(pathway$sink.nodes, ncol(pathway$psf_activities))
+        
+        if(log_norm) {
+          psf_activities_vec <- log(psf_activities_vec)
+        }
+        
+        psf_activities_vec <- psf_activities_vec[order(psf_activities_vec)]
+        
+        
+        sink_signals <- data.frame(sink_name = sink_names[names(psf_activities_vec)], 
+                                   signal = psf_activities_vec, 
+                                   dot_color = color_code(values = psf_activities_vec, pal1 = pal1, pal2 = pal2, log_scale = log_norm),
+                                   stringsAsFactors = F)
+        
+        sink_signals$sink_name <- factor(sink_signals$sink_name, levels = sink_names[sink_order_by_coord])
+        
+        if(ncol(pathway$exp_fc) == 1) {
+          
+          sink_plot <- ggplot(sink_signals, aes(x=sink_name, y=signal)) +
+            geom_bar(color="black", lwd=0.2, stat="identity") +
+            coord_flip() +
+            theme_bw()
+          
+        } else {
+          sink_plot <- ggplot(sink_signals, aes(x=sink_name, y=signal, fill=signal)) +
+            geom_boxplot(color="black", lwd=0.2, outlier.shape=NA) +
+            geom_point(color = sink_signals$dot_color) +
+            geom_jitter(color = sink_signals$dot_color, width = 0.2) +
+            guides(fill=FALSE) +
+            coord_flip() +
+            theme_bw()
+        }
+        
+        ggsave("sink_plot.png", plot = sink_plot, device = "png", path = NULL,
+               scale = 1, width = 400, height = magick::image_info(img)$height, units = "px",
+               dpi = 96, limitsize = TRUE)
+        
+        sink_plot_img <- image_read('sink_plot.png')
+        
+        file.remove('sink_plot.png')
+        
+        combined_img <- image_append(c(img, sink_plot_img))
+        
+        return(combined_img)
+        
+      } else {
+        stop("Please provide pathway with evalueated activity")
+      }
+      
+    } else {
+      return(img)
+    }
+    
   } else {
     
     graphical_data$edge_coords <- graphical_data$edge_coords[which(graphical_data$edge_coords$lty == "solid"),]
@@ -928,14 +999,95 @@ plot_pathway <- function(pathway, plot_type = "visnet",
 }
 
 
-### report genrating function
-generate_psf_report <- function(psf_list, folder_name) {
+#' Generates pdf report with colored pathways and plots
+#' @param psf_list Output from run_psf function
+#' @param folder_name name of the folder where pdf report(s) will be generated
+#' @param plot_type Pathway visualization type. Possible values are c("kegg", "visnet"). Default value is "kegg".
+#' @param log_norm log transform PSF values before color mapping. Default value is TRUE.
+#' @param y_adj_text Numeric value to adjust Y position of node labels. Depending on R version this value should be adjusted to have accurate text alignment. Default value is 0.
+#' @param y_adj_sink Numeric value to adjust Y position of sink node sign labels. Depending on R version this value should be adjusted to have accurate alignment. Default value is 0.
+#' @param use_old_images use olde kegg images(for use with curated pathway collection)
+#' @import gplots
+#' @import ggplot2
+#' @import ggrepel
+#' @import magick
+#' @import grDevices
+#' @export
+generate_psf_report <- function(psf_list, folder_name, plot_type = "kegg", log_norm = TRUE, y_adj_text = 0, y_adj_sink = 0, use_old_images = F) {
   
-  test_psf_result
+  dir.create(folder_name)
   
   lapply(psf_list, function(x) {
     
-    plot_pathway
+    magick::autoviewer_disable()
+    
+    print(paste0("Generating report for ", x$attrs$title, " pathway"))
+    
+    pathway_plot <- plot_pathway(pathway = x, plot_type = plot_type, color_nodes = "psf_activities", 
+                                 sample_id = "mean", log_norm = log_norm, plot_sink_values = T, 
+                                 y_adj_text = y_adj_text, y_adj_sink = y_adj_sink,
+                                 use_old_images = use_old_images)
+    
+    plots <- magick::image_graph(width = 1000, height = 800, res = 96)
+    
+    if(ncol(x$exp_fc) > 1) {
+      if(log_norm) {
+        sink_values <- log(x$psf_activities[x$sink.nodes,])
+      } else {
+        sink_values <- x$psf_activities[x$sink.nodes,]
+      }
+      gplots::heatmap.2(sink_values, col = c(pal1(10), pal2(10)), trace = "none",
+                        Rowv = FALSE, Colv = FALSE, ylab = "Sink values", main = paste0(x$attrs$title, " Sink PSF values"),
+                        margin = c(10, 8), keysize = 1, key.title = "PSF log value",
+                        dendrogram = 'none')
+    }
+    dev.off()
+    
+    if("p_val_mat" %in% names(x)) {
+      
+      ### generating volcano plot
+      sink_names <- unlist(graph::nodeData(x$graph, x$sink.nodes, attr = "label"))
+      
+      psf_activities_vec <- as.vector(x$psf_activities[x$sink.nodes,])
+      
+      volcano_table <- data.frame(sink_names = unlist(lapply(colnames(x$psf_activities), function(x) {paste(sink_names, x, sep = "_")})), 
+                                 log_psf = log(psf_activities_vec), 
+                                 pvalue = as.vector(x$p_val_mat[x$sink.nodes,]) + 0.00001,
+                                 stringsAsFactors = F)
+      
+      ## detecting up and down regulated significan sink psf values
+      volcano_table$diffpsf <- "NO"
+      volcano_table$diffpsf[volcano_table$log_psf > 0.6 & volcano_table$pvalue < 0.05] <- "UP"
+      volcano_table$diffpsf[volcano_table$log_psf < -0.6 & volcano_table$pvalue < 0.05] <- "DOWN"
+      
+      ## adding labels for signifcant sinks
+      volcano_table$psflabel <- ""
+      volcano_table$psflabel[volcano_table$diffpsf != "NO"] <- volcano_table$sink_names[volcano_table$diffpsf != "NO"]
+      
+      
+      volcano_plot <- ggplot(data=volcano_table, aes(x=log_psf, y=-log10(pvalue), col=diffpsf, label=psflabel)) +
+        geom_point() + 
+        theme_minimal() +
+        ggtitle("PSF with p values") +
+        theme(plot.title = element_text(size = 25, face = "bold", hjust = 0.5)) +
+        geom_text_repel(max.overlaps = Inf) +
+        scale_color_manual(values=c("blue", "black", "red")) +
+        geom_vline(xintercept=c(-0.6, 0.6), col="red") +
+        geom_hline(yintercept=-log10(0.05), col="red")
+      
+      ggsave("volcano_plot.png", plot = volcano_plot, device = "png", path = NULL,
+             scale = 1, width = 1000, height = 800, units = "px",
+             dpi = 96, limitsize = TRUE)
+      
+      volcano_plot_img <- image_read('volcano_plot.png')
+      
+      file.remove('volcano_plot.png')
+      
+      plots <- image_append(c(plots, volcano_plot_img))
+      
+    }
+    
+    magick::image_write(c(pathway_plot, plots), format = "pdf", path = paste0(folder_name, "/", gsub("[- ]", "_", x$attrs$title), ".pdf"), quality = 300)
     
   })
   

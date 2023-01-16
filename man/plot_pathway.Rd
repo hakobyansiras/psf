@@ -12,6 +12,7 @@ plot_pathway(
   log_norm = T,
   highlight_nodes = NULL,
   highlight_color = "red",
+  plot_sink_values = F,
   y_adj_text = 0,
   y_adj_sink = 0,
   use_old_images = F
@@ -31,6 +32,8 @@ plot_pathway(
 \item{highlight_nodes}{single value of node id or a vector of ids to be highlighted in plotted pathway. Default value is NULL.}
 
 \item{highlight_color}{Highlighted nodes color(s). Default values is "red".}
+
+\item{plot_sink_values}{If set to TRUE then pathway activity values of terminal (sink) nodes will be plotted on the right side of the pathway (boxplots for multiple samples, barplot for single sample). Default value is FALSE.}
 
 \item{y_adj_text}{Numeric value to adjust Y position of node labels. Depending on R version this value should be adjusted to have accurate text alignment. Default value is 0.}
 
