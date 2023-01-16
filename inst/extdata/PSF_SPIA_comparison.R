@@ -9,7 +9,7 @@ library(SPIA)
 library(venn)
 
 ### running differential gene expression analysis with DESeq2
-dds <- DESeqDataSetFromMatrix(round(normalized_aggregated_counts_filtered[,patient.concise$ID.indata[which(patient.concise$Group %in% c("Mel_1", "Naevi_1"))]]),
+dds <- DESeqDataSetFromMatrix(round(melanoma_deseq_normalized_counts[,patient.concise$ID.indata[which(patient.concise$Group %in% c("Mel_1", "Naevi_1"))]]),
                               colData = patient.concise[which(patient.concise$Group %in% c("Mel_1", "Naevi_1")),],
                               design = ~ Group)
 dds$Group <- factor(dds$Group, levels = c("Naevi_1","Mel_1"))
