@@ -9,9 +9,11 @@ library(shinyjs)
 library(visNetwork)
 library(shinyjqui)
 library(ggplot2)
+library(igraph)
 ### library(plotrix)
 
 load("whole_data_unit.RData")
+options(shiny.maxRequestSize=50*1024^2)
 
 #############################################
 ######### Pathway curation block ############
@@ -30,7 +32,8 @@ kegg_data_downloader <- function(pathway_name) {
   
   download.file(kgml, destfile = kgml_path, method = "auto")
   
-  image_path <- tempfile()
+  # image_path <- tempfile()
+  image_path <- paste0("collection_dir/pathway_images/", pathway_id, ".png")
   
   download.file(image, destfile = image_path, method = "auto")
   
@@ -38,7 +41,182 @@ kegg_data_downloader <- function(pathway_name) {
   
   graph <- psf::generate.kegg.collection.from.kgml(kgml_path)[[1]]
   
-  return(list(pathway = graph, image = img, group_graphics = graph$group_nodes))
+  return(list(pathway = graph, image = img))
+  
+}
+
+#### kegg pathway plotter ####
+plot_kegg_pathway <- function(graphnel_df, group_graphics, pathway_image, 
+                              node_colors = NULL, custom_edge_mapping = FALSE, edge_mapping = FALSE, edge_in_mode = FALSE, highlight_nodes = NULL, highlight_color = "red",
+                              col_legend_title = NULL, color_bar_lims, y_adj_sink = 3, node_fill_opacity = 0, present_node_modifications = FALSE, removed_nodes = NULL, y_adj_text = 3
+) {
+  
+  ### checking highlight nodes and their border colors
+  if(length(highlight_color) > 1) {
+    if(length(highlight_color) == length(highlight_nodes)) {
+      highlight_color_vector <- setNames(object = highlight_color, nm = highlight_nodes)
+    } else {
+      stop("Error: highlighted nodes and their colors must be in the same length")
+    }
+  } else {
+    highlight_color_vector <- setNames(object = rep(highlight_color, length(highlight_nodes)), nm = highlight_nodes)
+  }
+  
+  img <- magick::image_draw(pathway_image)
+  
+  node_graphics <- graphnel_df$node_table
+  
+  ### node exp coloring
+  if(any(node_graphics$node_id %in% node_colors$node_id)) {
+    coloring_set <- node_graphics[node_colors$node_id,]
+    graphics::rect(coloring_set$x_start,
+                   coloring_set$y_start - 1,
+                   coloring_set$x_end,
+                   coloring_set$y_end,
+                   # border = coloring_set$border_color,
+                   border = NA,
+                   # lty = coloring_set$lty_type,
+                   lwd=2,
+                   col = grDevices::adjustcolor(node_colors$col, alpha.f = 1)
+    )
+    
+    graphics::text(x = coloring_set$x,
+                   y = coloring_set$y_start + y_adj_text,
+                   labels = coloring_set$label,
+                   col = node_colors$text_col, adj = c(0,0.2) + c(0.48, 1))
+    
+  }
+  
+  ### adding sink node labels
+  graphics::text(x = node_graphics[node_graphics$sink,"x_end"] + 10,
+                 y = node_graphics[node_graphics$sink,"y"] - 30 + y_adj_sink, cex = 3,
+                 labels = rep("*", sum(node_graphics$sink)),
+                 col = rep("#9ACD32", sum(node_graphics$sink)), adj = c(0,0.2) + c(0.48, 1))
+  
+  if(!is.null(highlight_nodes)) {
+    highlight_set <- node_graphics[which(node_graphics[,"node_id"] %in% highlight_nodes),]
+    
+    rect( highlight_set$x_start, 
+          highlight_set$y_start, 
+          highlight_set$x_end, 
+          highlight_set$y_end, 
+          border = highlight_color_vector[highlight_set$node_id], lty = "solid", lwd=2, col = adjustcolor( "#a3297a", alpha.f = node_fill_opacity))
+  }
+  
+  
+  ### scale color bar
+  if(!is.null(node_colors)) {
+    color_legend_maker(x = magick::image_info(img)$width - 230, y = 50, leg = 200, cols = c(pal1(10), pal2(10)), title = col_legend_title, lims = color_bar_lims, digits=3, prompt=FALSE,
+                       lwd=4, outline=TRUE, subtitle = "", fsize = 1.3)
+  }
+  
+  text(x = c(magick::image_info(img)$width - 88, magick::image_info(img)$width - 30),
+       y = c(70, 65 + y_adj_sink - 6), cex = c(1.5, 3),
+       labels = c("Sink node", "*"),
+       col = c("#000000", "#9ACD32"), adj = c(0,0.2) + c(0.48, 1))
+  
+  
+  ## color grop nodes
+  if(length(group_graphics) > 0 ) {
+    lapply(group_graphics, function(z) {
+      rect( z$kegg.gr.x-z$kegg.gr.width*0.5, 
+            z$kegg.gr.y+z$kegg.gr.height*0.5, 
+            z$kegg.gr.x+z$kegg.gr.width*0.5, 
+            z$kegg.gr.y-z$kegg.gr.height*0.5, 
+            border = "yellow", lty = "dashed", lwd=2)
+    })
+  }
+  
+  if(present_node_modifications) {
+    added_nodes <- node_graphics[which(node_graphics$existence == "added"),]
+    if(nrow(added_nodes) > 0) {
+      graphics::rect(added_nodes$x_start,
+                     added_nodes$y_start - 1,
+                     added_nodes$x_end,
+                     added_nodes$y_end,
+                     # border = coloring_set$border_color,
+                     border = rep("black", nrow(added_nodes)),
+                     # lty = coloring_set$lty_type,
+                     lwd=1,
+                     col = rep("#BFFFBF", nrow(added_nodes))
+      )
+      
+      graphics::text(x = added_nodes$x,
+                     y = added_nodes$y_start + y_adj_text,
+                     labels = added_nodes$label,
+                     col = rep("black", nrow(added_nodes)), adj = c(0,0.2) + c(0.48, 1))
+    }
+    
+    if(!is.null(removed_nodes)) {
+      graphics::rect(removed_nodes$x_start,
+                     removed_nodes$y_start - 1,
+                     removed_nodes$x_end,
+                     removed_nodes$y_end,
+                     # border = coloring_set$border_color,
+                     border = rep("white", nrow(removed_nodes)),
+                     # lty = coloring_set$lty_type,
+                     lwd=2,
+                     col = rep("white", nrow(removed_nodes))
+      )
+    }
+    
+  }
+  
+  #### continue from here
+  if(edge_mapping) {
+    
+    if(custom_edge_mapping) {
+      
+      from <- graphnel_df$node_table[which(graphnel_df$node_table$node_id == highlight_nodes[1]),]
+      to <- graphnel_df$node_table[which(graphnel_df$node_table$node_id == highlight_nodes[2]),]
+      
+      shape::Arrows(
+        x0 = (from$x_start + from$x_end)/2,
+        x1 = (to$x_start + to$x_end)/2,
+        y0 = (from$y_start + from$y_end)/2,
+        y1 = (to$y_start + to$y_end)/2,
+        col = "red", 
+        lwd=2, arr.length = 0.2, arr.type = "simple"
+      )
+      
+    } else {
+      if(!is.null(graphnel_df$edge_table)) {
+        
+        if(length(highlight_nodes) == 0) {
+          shape::Arrows(
+            x0 = graphnel_df$node_table[graphnel_df$edge_table$from,"x"],
+            x1 = graphnel_df$node_table[graphnel_df$edge_table$to,"x"],
+            y0 = graphnel_df$node_table[graphnel_df$edge_table$from,"y"],
+            y1 = graphnel_df$node_table[graphnel_df$edge_table$to,"y"],
+            col = graphnel_df$edge_table$color, 
+            lty = ifelse(is.na(graphnel_df$edge_table$dashes), FALSE, graphnel_df$edge_table$dashes) + 1,
+            lwd=2, arr.length = 0.2, arr.type = "simple"
+          )
+        } else {
+          if(edge_in_mode) {
+            index <- unique(which(graphnel_df$edge_table$from %in% highlight_nodes & graphnel_df$edge_table$to %in% highlight_nodes))
+          } else {
+            index <- unique(c(which(graphnel_df$edge_table$from %in% highlight_nodes), 
+                              which(graphnel_df$edge_table$to %in% highlight_nodes)))
+          }
+          
+          shape::Arrows(
+            x0 = graphnel_df$node_table[graphnel_df$edge_table$from[index],"x"],
+            x1 = graphnel_df$node_table[graphnel_df$edge_table$to[index],"x"],
+            y0 = graphnel_df$node_table[graphnel_df$edge_table$from[index],"y"],
+            y1 = graphnel_df$node_table[graphnel_df$edge_table$to[index],"y"],
+            col = graphnel_df$edge_table$color[index], 
+            lty = ifelse(is.na(graphnel_df$edge_table$dashes[index]), FALSE, graphnel_df$edge_table$dashes[index]) + 1,
+            lwd=2, arr.length = 0.2, arr.type = "simple"
+          )
+        }
+      }
+    }
+    
+  }
+  
+  dev.off()
+  return(img)
   
 }
 
@@ -347,34 +525,15 @@ kegg_node_mapper <- function(group_graphics, kegg_pathway_graphics, pathway_name
   
 }
 
-#### disconnected node detector ####
-disconnected_node_detector <- function (g) {
-  edges = graph::edges(g)
-  connected.nodes = vector()
-  for (snode in names(edges)) {
-    if (length(edges[[snode]]) > 0) {
-      if (!(snode %in% connected.nodes)) 
-        connected.nodes = c(connected.nodes, snode)
-      for (tnode in edges[[snode]]) {
-        if (!(tnode %in% connected.nodes)) 
-          connected.nodes = c(connected.nodes, tnode)
-      }
-    }
-  }
-  all.nodes = graph::nodes(g)
-  disconnected.nodes = setdiff(all.nodes, connected.nodes)
-  return(disconnected.nodes)
-}
-
 #### database search function ####
 node_pairs_generator <- function(selected_node_name, direction = TRUE, direction_state = TRUE, pathway_realted = FALSE, pathway_data) {
   
   if(pathway_realted) {
-    node_a <- unlist(strsplit(selected_node_name[1,"entrez_id"], split = ","))
+    node_a <- unlist(strsplit(selected_node_name[1,"component_id_s"], split = ","))
     
     pathway_nodes <- do.call(rbind, apply(pathway_data, 1, function(x) {
-      cbind(unlist(strsplit(x[9], split = ",")), 
-            rep(x[8], length(unlist(strsplit(x[9], split = ",")))))
+      cbind(unlist(strsplit(x[3], split = ",")), 
+            rep(x[1], length(unlist(strsplit(x[3], split = ",")))))
     }))
     
     node_names <- setNames(object = pathway_nodes[,2], nm = pathway_nodes[,1])
@@ -400,8 +559,8 @@ node_pairs_generator <- function(selected_node_name, direction = TRUE, direction
     return(pathway_filtered_database)
     
   } else {
-    node_a <- unlist(strsplit(selected_node_name[1,"entrez_id"], split = ","))
-    node_b <- unlist(strsplit(selected_node_name[2,"entrez_id"], split = ","))
+    node_a <- unlist(strsplit(selected_node_name[1,"component_id_s"], split = ","))
+    node_b <- unlist(strsplit(selected_node_name[2,"component_id_s"], split = ","))
     
     if(direction) {
       if(direction_state) {
@@ -431,7 +590,73 @@ node_pairs_generator <- function(selected_node_name, direction = TRUE, direction
   
 }
 
-#### visnet data generator ####
+#### visnet data extractor ####
+vis_extract <- function(vis_table, node_colors = NULL) {
+  node_table <- vis_table$node_table[,c("node_id", "label", "vis_width", "font.color", "size", "font.size", "borderWidth", "color.border", "color.background", "shape", "title", "x", "y")]
+  
+  colnames(node_table) <- c("id", "label", "widthConstraint.maximum", "font.color", "size", "font.size", "borderWidth", "color.border", "color.background", "shape", "title", "x", "y")
+  
+  if(!is.null(node_colors)) {
+    
+    magick::autoviewer_disable() ### to avoid legend plotting before netowrk rendering
+    legend_img <- magick::image_device(width = 480, height = 480)
+    plot.new()
+    
+    color_legend_maker(x = 0.05, y = 0, leg = 0.9, cols = c(pal1(10), pal2(10)), title = node_colors$col_legend_title, lims = node_colors$color_bar_lims, digits=3, prompt=FALSE,
+                       lwd=4, outline=TRUE, subtitle = "", fsize = 1.3)
+    
+    temp_legend <- tempfile()
+    
+    magick::image_write(magick::image_trim(legend_img, fuzz = 0), path = temp_legend)
+    
+    legend_path <- paste('data:image/png;base64', RCurl::base64Encode(readBin(temp_legend, 'raw', file.info(temp_legend)[1, 'size']), 'txt'), sep = ',')
+    
+    legend_data_frame <- data.frame(
+      id = as.character(max(as.integer(node_table$id)) + 1),
+      label = "Color legend", 
+      widthConstraint.maximum = NA, 
+      font.color = "#000000", 
+      size = 30, 
+      font.size = 32, 
+      borderWidth = 0, 
+      color.border = "",
+      color.background = "",
+      shape = "image", 
+      title = "",
+      x = max(node_table$x),
+      y = min(node_table$y) - 10,
+      image = legend_path
+    )
+    
+    node_table$image <- "unselected"
+    node_table <- rbind(node_table, legend_data_frame)
+    
+    node_table$color.background <- unname(sapply(node_table$id, function(x) {
+      if(x %in% node_colors$node_colors$node_id) {
+        node_colors$node_colors[which(node_colors$node_colors$node_id == x),"col"]
+      } else {
+        "#BFFFBF"
+      }
+    }))
+    
+    node_table$color.border <- node_table$color.background
+    
+    node_table$font.color <- unname(sapply(node_table$id, function(x) {
+      if(x %in% node_colors$node_colors$node_id) {
+        node_colors$node_colors[which(node_colors$node_colors$node_id == x),"text_col"]
+      } else {
+        "#000000"
+      }
+    }))
+    
+    node_table$title <- paste(node_table$title, node_colors$hover_text[node_table$id], sep = "<br>")
+  }
+  
+  
+  edge_table <- vis_table$edge_table[,c("id", "from", "to", "color", "arrows.to.enabled", "arrows.to.type", "label", "dashes")]
+  return(list(node_table = node_table, edge_table = edge_table))
+}
+
 visnet_creator <- function(graphical_data, node_colors = NULL, col_legend_title = "", color_bar_lims = "") {
   graphical_data$edge_coords <- graphical_data$edge_coords[which(graphical_data$edge_coords$lty == "solid"),]
   graphical_data$node_coords <- graphical_data$node_coords[which(graphical_data$node_coords$exist),]
@@ -441,6 +666,14 @@ visnet_creator <- function(graphical_data, node_colors = NULL, col_legend_title 
       "dot"
     } else {
       "box"
+    }
+  }))
+  
+  node_widths <- unname(sapply(1:nrow(graphical_data$node_coords), function(x) {
+    if(grepl("path", graphical_data$node_coords[x, "node_name"])) {
+      (graphical_data$node_coords[x,"x_end"] - graphical_data$node_coords[x,"x_start"])*2
+    } else {
+      NA
     }
   }))
   
@@ -503,6 +736,7 @@ visnet_creator <- function(graphical_data, node_colors = NULL, col_legend_title 
                       font.size = rep(22, nrow(graphical_data$node_coords)), 
                       size = size,
                       font.color = font_color,
+                      widthConstraint.maximum = node_widths,
                       x = (graphical_data$node_coords$x_start + graphical_data$node_coords$x_end)/2,
                       y = (graphical_data$node_coords$y_start + graphical_data$node_coords$y_end)/2,
                       row.names = graphical_data$node_coords$node_id, stringsAsFactors = F
@@ -553,40 +787,6 @@ visnet_creator <- function(graphical_data, node_colors = NULL, col_legend_title 
   
 }
 
-#### pathway processing function ####
-pathway_graph_processing <- function(pathway) {
-  
-  if(sum(graph::edgeData(pathway$graph, attr = "existence") == "removed") > 0) {
-    removed_edges <- t(simplify2array(strsplit(names(which(graph::edgeData(pathway$graph, attr = "existence") == "removed")), split = "|", fixed = T )))
-    
-    pathway$graph <- graph::removeEdge(from = removed_edges[,1], to = removed_edges[,2], pathway$graph)
-  }
-  
-  removed_nodes <- names(which(graph::nodeData(pathway$graph, attr = "existence") == "removed"))
-  
-  if(length(removed_nodes) > 0) {
-    pathway$graph <- graph::removeNode(node = removed_nodes, pathway$graph)
-  }
-  
-  return(pathway)
-}
-
-#### edge redirect function ####
-edge_redirector <- function(from, to, g) {
-  
-  attrs <- AnnotationDbi::unlist2(graph::edgeData(g, from = from, to = to), recursive = F)
-  attrs["change_info"] <- "reversed"
-  
-  g <- graph::removeEdge(from = from, to = to, graph = g)
-  
-  g <- graph::addEdge(from = to, to = from, graph = g)
-  
-  for(i in names(attrs)) {
-    graph::edgeData(g, from = to, to = from, attr = i) <- attrs[[i]]
-  }
-  return(g)
-}
-
 database_table_design <- function(interaction_table) {
   if(nrow(interaction_table) > 0) {
     interaction_table <- as.data.frame(t(apply(interaction_table, 1, function(x) {
@@ -600,26 +800,17 @@ database_table_design <- function(interaction_table) {
   return(interaction_table)
 }
 
+network_table_design <- function(table) {
+  if("from" %in% colnames(table)) {
+    return(table[,c("from", "to", "type", "subtype1", "subtype2", "weight", "existence", "change_info", "data_source")])
+  } else {
+    return(table[,c("node_id", "label", "component_id_s", "type", "psf_function", "expression", "signal", "existence", "change_info", "data_source")])
+  }
+}
+
 #############################################
 ######## Gene exp mapping and PSF ###########
 #############################################
-
-#### color maker function ####
-color_code <- function(values, pal1, pal2) {
-  
-  if(all(values > 0)) {
-    calc_colors <- pal2(10)[cut(values[which(values > 0)],10)]
-  } else {
-    if(all(values <= 0)) {
-      calc_colors <- pal1(10)[cut(values[which(values <= 0)],10)]
-    } else {
-      calc_colors <- c(pal1(10)[cut(values[which(values <= 0)],10)], 
-                       pal2(10)[cut(values[which(values > 0)],10)])
-    }
-  }
-  
-  return(calc_colors)
-}
 
 #### psf calculation and coloring function ####
 psf_signal_calculator_and_coloring <- function(entrez_fc, pathway, pathway_name, update_mod = FALSE, old_graph = NULL, no_color_mode = F) {
@@ -711,100 +902,251 @@ psf_signal_calculator_and_coloring <- function(entrez_fc, pathway, pathway_name,
   
 }
 
-chemokine_pathway_data <- kegg_data_downloader("Chemokine_signaling_pathway")
+#### node color coding function ####
+node_color_generator <- function(pathway, sample_id = "mean", log_norm = TRUE, color_nodes = "psf_activities") {
+  if("exp_fc" %in% names(pathway)) {
+    mapping_data = TRUE
+    if(sample_id == "mean") {
+      pathway_exp_values <- rowMeans(pathway$exp_fc)
+      pathway_psf_values <- rowMeans(pathway$psf_activities)
+    } else {
+      pathway_exp_values <- pathway$exp_fc[,sample_id]
+      pathway_psf_values <- pathway$psf_activities[,sample_id]
+    }
+    
+    if(log_norm) {
+      hover_text <- paste(paste("Log exp FC", round(log(pathway_exp_values + 0.00001), digits = 5)),
+                          paste("Log PSF", round(log(pathway_psf_values + 0.00001), digits = 5)),
+                          sep = "<br>")
+    } else {
+      hover_text <- paste(paste("Exp FC", round(pathway_exp_values, digits = 5)),
+                          paste("PSF", round(pathway_psf_values, digits = 5)),
+                          sep = "<br>")
+    }
+    
+    names(hover_text) <- rownames(pathway$exp_fc)
+    
+    if(log_norm) {
+      pathway_exp_values <- round(log(drop(pathway_exp_values)[order(drop(pathway_exp_values))] + 0.00001), digits = 5)
+      pathway_psf_values <- round(log(drop(pathway_psf_values)[order(drop(pathway_psf_values))] + 0.00001), digits = 5)
+    } else {
+      pathway_exp_values <- round(drop(pathway_exp_values)[order(drop(pathway_exp_values))], digits = 5)
+      pathway_psf_values <- round(drop(pathway_psf_values)[order(drop(pathway_psf_values))], digits = 5)
+    }
+  } else {
+    mapping_data = FALSE
+  }
+  
+  if(mapping_data) {
+    if(color_nodes == "psf_activities") {
+      pathway_node_values <- pathway_psf_values
+    } else {
+      pathway_node_values <- pathway_exp_values
+    }
+    
+    node_colors <- color_code(values = pathway_node_values, pal1 = pal1, pal2 = pal2, log_scale = log_norm)
+    
+    node_colors <- data.frame(node_id = names(pathway_node_values)[c(which(pathway_node_values <= 0), which(pathway_node_values > 0))], 
+                              col = node_colors,
+                              text_col = unname(sapply(node_colors, function(x) {c( "black", "white")[  1+(sum( col2rgb(x) *c(299, 587,114))/1000 < 123) ]})),
+                              stringsAsFactors = F
+    )
+    
+    node_colors <- node_colors[which(node_colors$node_id %in% graph::nodes(pathway$graph)[which(unlist(graph::nodeData(pathway$graph, attr = "type")) != "map")]),]
+    
+  } else {
+    stop("Please provide pathway with evalueated activity")
+  }
+  
+  if(color_nodes == "psf_activities") {
+    col_legend_title = ifelse(log_norm, "Log PSF value", "PSF value")
+  } else {
+    col_legend_title = ifelse(log_norm, "Log FC value", "FC value")
+  }
+  
+  return(list(node_colors = node_colors, col_legend_title = col_legend_title, color_bar_lims = range(pathway_node_values), hover_text = hover_text))
+}
+
+#### check user data ####
+if(file.exists("collection_dir") & length(dir("collection_dir/pathways/") > 0)) {
+  pathway <- readRDS(dir("collection_dir/pathways", full.names = T)[1])
+  pathway_name <- gsub(".RDS", "", dir("collection_dir/pathways")[1])
+  graphnel_df <- graphnel_to_df(pathway, extended = TRUE)
+  
+  if(file.exists(paste0("collection_dir/pathway_images/", pathway_codes_new[pathway_name], ".png"))) {
+    image <- magick::image_read(paste0("collection_dir/pathway_images/", pathway_codes_new[pathway_name], ".png"))
+    
+    rendering_image <- plot_kegg_pathway(graphnel_df = graphnel_df, group_graphics = pathway$group_nodes, pathway_image = image,
+                                         node_colors = NULL, edge_mapping = FALSE, edge_in_mode = FALSE, highlight_nodes = NULL, highlight_color = "red",
+                                         col_legend_title = NULL, color_bar_lims, present_node_modifications = FALSE, removed_nodes = pathway$removed_nodes) %>%
+      image_write(tempfile(fileext='png'), format = 'png')
+  } else {
+    image <- NULL
+    rendering_image <- NULL
+  }
+} else {
+  
+  if(!file.exists("collection_dir")) {
+    dir.create("collection_dir")
+    dir.create("collection_dir/pathways")
+    dir.create("collection_dir/pathway_images")
+  }
+  
+  pathway_name <- "Chemokine_signaling_pathway"
+  pathway_data <- kegg_data_downloader(pathway_name)
+  pathway <- pathway_data$pathway
+  image <- pathway_data$image
+  
+  graphnel_df <- graphnel_to_df(pathway, extended = TRUE)
+  
+  rendering_image <- plot_kegg_pathway(graphnel_df = graphnel_df, group_graphics = pathway$group_nodes, pathway_image = image,
+                                       node_colors = NULL, edge_mapping = FALSE, edge_in_mode = FALSE, highlight_nodes = NULL, highlight_color = "red",
+                                       col_legend_title = NULL, color_bar_lims, present_node_modifications = FALSE, removed_nodes = pathway$removed_nodes) %>%
+    image_write(tempfile(fileext='png'), format = 'png')
+}
+
 
 shinyServer(function(input, output, session) {
   
   #### reactive values ####
-  v <- reactiveValues(image_file = kegg_node_mapper(group_graphics = chemokine_pathway_data$group_graphics, kegg_pathway_graphics = graphical_data_generator(chemokine_pathway_data$pathway), pathway_name = "Chemokine_signaling_pathway", pathway_image = chemokine_pathway_data$image, show_changes = F) %>% 
-                        image_write(tempfile(fileext='png'), format = 'png'),
-                      pathway_name = "Chemokine_signaling_pathway",
-                      pathway = chemokine_pathway_data$pathway, pathway_image = chemokine_pathway_data$image, pathway_data = chemokine_pathway_data, graphical_data = graphical_data_generator(chemokine_pathway_data$pathway), 
-                      selectize_state = TRUE, ordered_node_id = 1, ordered_nodes = NULL,
-                      selected_node_name = setNames(data.frame(matrix(ncol = 4, nrow = 0)), c("node_name", "gr_name", "node_id", "entrez_id")),
-                      database_out = NULL, clickX = NULL, clicky = NULL, searching_state = FALSE, 
-                      database_search_node = NULL, selected_interaction = NULL, edge_adding_error = "", edge_adding_error = "",
-                      event_node_type = scan(file = "event_names.txt", what = "character", sep = "\t"), pathway_change_alert = 0, 
+  v <- reactiveValues(image_file = rendering_image,
+                      pathway_name = pathway_name,
+                      pathway = pathway, pathway_image = image, # pathway_data = chemokine_pathway_data, 
+                      graphnel_df = graphnel_df, # graphical_data = graphical_data_generator(chemokine_pathway_data$pathway), 
+                      undo_stack = list(graphnel_df),
+                      redo_stack = NULL,
+                      selected_node_name = setNames(data.frame(matrix(ncol = 3, nrow = 0)), c("node_id", "component_id_s", "label")),
+                      from_nodes = NULL, database_out = NULL, searching_state = FALSE, 
+                      database_search_node = NULL, selected_interaction = NULL, edge_adding_error = "", edge_adding_error_visnet = "", node_data_adding_error_visnet = "",
+                      event_node_type = scan(file = "event_names.txt", what = "character", sep = "\t"), pathway_change_alert = 0, undo_alert = 0,
                       edge_edit_stage = FALSE, previous_row_selection = 0, allow_edge_draw = TRUE,
                       psf_and_colors = NULL, draw_color_bar = FALSE, col_legend_title = "", color_bar_lims = NULL, color_bar_psf_mode = FALSE, 
-                      pathway_exp_colored = FALSE, pathway_psf_colored = FALSE, mapping_value_type = NULL, exp_uploaded = NULL, entrez_fc = NULL,
-                      allow_graph_param_update = FALSE, sink_values_plot = NULL
+                      node_colors = NULL, # pathway_exp_colored = FALSE, pathway_psf_colored = FALSE, 
+                      mapping_value_type = NULL, exp_uploaded = NULL, entrez_fc = NULL,
+                      allow_graph_param_update = FALSE, sink_values_plot = NULL,
+                      edge_network_table_filtered = NULL, node_network_table_filtered = NULL, 
+                      visnet_coord_ranges = NULL, node_edit_mode = FALSE, loaded_collection = NULL                   
   )
   
-  #### selectize input update ####
+  #### loading collection folder if exists ####
   observe({
-    updateSelectizeInput(session, "selected_pathway", 
-                         choices = names(new_kegg_collection), 
-                         selected = v$pathway_name, server = TRUE)
+    isolate({
+      if(length(dir("collection_dir/pathways/") > 0)) {
+        if(any(gsub(".RDS", "", dir("collection_dir/pathways")) %in% kegg_human_pathway_list$Name)) {
+          updateRadioButtons(session, inputId = "pathway_source_selector", selected = 2)
+          show('pathway_source_radio')
+        }
+        updateSelectizeInput(session, "selected_pathway", choices = gsub(".RDS", "", dir("collection_dir/pathways")), selected = v$pathway_name, label = "Select pathway", server = TRUE)
+        show('pathway_name_selector')
+      } else {
+        updateRadioButtons(session, inputId = "pathway_source_selector", selected = 1)
+      }
+    })
   })
   
+  #### pathway source selection ####
+  observeEvent(input$pathway_source, {
+    if(input$pathway_source == "Pathway collection") {
+      hide('pathway_name_selector')
+      show('collection_loader')
+    }
+    if(input$pathway_source == "DF") {
+      hideTab(session, inputId = "net_vis_panels", target = "1")
+      hide('pathway_name_selector')
+      hide('collection_loader')
+      show('df_loader')
+    }
+    if(input$pathway_source == "Editor") {
+      hideTab(session, inputId = "net_vis_panels", target = "1")
+      hide('pathway_name_selector')
+    }
+  }, ignoreInit = TRUE)
+  
+  
+  #### collection loader ####
+  observeEvent(input$load_collection, {
+    if(grepl("zip", input$load_collection$datapath)) {
+      unzip(zipfile = input$load_collection$datapath)
+      if(any(gsub(".RDS", "", dir("collection_dir/pathways")) %in% kegg_human_pathway_list$Name)) {
+        showTab(session, select = F, inputId = "net_vis_panels", target = "1")
+        updateRadioButtons(session, inputId = "pathway_source_selector", selected = 2)
+      }
+      
+      updateSelectizeInput(session, "selected_pathway", choices = gsub(".RDS", "", dir("collection_dir/pathways")), selected = gsub(".RDS", "", dir("collection_dir/pathways"))[1], label = "Select pathway", server = TRUE)
+      show('pathway_name_selector')  
+    }
+  })
+  
+  #### pathway source selector for collection ####
+  observeEvent(input$pathway_source_selector, {
+    if(input$pathway_source_selector == 1) {
+      updateSelectizeInput(session, "selected_pathway", choices = kegg_human_pathway_list$Name, selected = "", label = "Add from KEGG", server = TRUE)
+    } else {
+      updateSelectizeInput(session, "selected_pathway", choices = gsub(".RDS", "", dir("collection_dir/pathways")), 
+                           selected = ifelse(v$pathway_name %in% gsub(".RDS", "", dir("collection_dir/pathways")), v$pathway_name, ""), label = "Select pathway", server = TRUE)
+    }
+  }, ignoreInit = TRUE)
   
   #### pathway selection by selectize input ####
   observeEvent(input$load_pathway, {
     if(input$selected_pathway != "") {
+      
       v$pathway_name <- input$selected_pathway
       
       v$image_file <- NULL
-        
-      v$pathway_data <- kegg_data_downloader(input$selected_pathway)
-        
-      v$pathway <- v$pathway_data$pathway
-        
-      v$pathway_image <- v$pathway_data$image
-        
-      v$graphical_data <- graphical_data_generator(v$pathway)
+      
+      if(input$pathway_source == "Pathway collection") {
+        if(input$pathway_source_selector == 1) {
+          pathway_data <- kegg_data_downloader(v$pathway_name)
+          v$pathway <- pathway_data$pathway
+          v$pathway_image <- pathway_data$image
+        } else {
+          v$pathway <- readRDS(paste0("collection_dir/pathways/", v$pathway_name, ".RDS"))
+          v$pathway_image <- magick::image_read(paste0("collection_dir/pathway_images/", pathway_codes_new[v$pathway_name], ".png"))
+        }
+      }
+      
+      v$graphnel_df <- graphnel_to_df(v$pathway, extended = TRUE)
       
       hide('vis_buttons')
       
+      v$undo_stack <- list(v$graphnel_df)
+      v$redo_stack <- NULL
+      
       v$psf_and_colors <- NULL
       
-      v$pathway_exp_colored <- FALSE
-      v$pathway_psf_colored <- FALSE
+      # v$pathway_exp_colored <- FALSE
+      # v$pathway_psf_colored <- FALSE
       
-      v$image_file <- kegg_node_mapper(group_graphics = v$pathway_data$group_graphics, kegg_pathway_graphics = v$graphical_data, pathway_name = v$pathway_name, pathway_image = v$pathway_image, show_changes = input$show_changes) %>% 
+      v$image_file <- plot_kegg_pathway(graphnel_df = v$graphnel_df, group_graphics = v$pathway$group_nodes, pathway_image = v$pathway_image,
+                        node_colors = NULL, edge_mapping = FALSE, edge_in_mode = FALSE, highlight_nodes = NULL, highlight_color = "red",
+                        col_legend_title = NULL, color_bar_lims, present_node_modifications = input$show_modified_nodes, removed_nodes = v$pathway$removed_nodes) %>%
         image_write(tempfile(fileext='png'), format = 'png')
       
     }
   })
   
-  #### load pathway from saved RData ####
-  observeEvent(input$kegg_data, {
-    
-    # print(input$kegg_data$datapath)
-    
-    # unzip(input$kegg_data$datapath)
-    
-    # load(gsub(".zip", ".RData", input$kegg_data$datapath))
-    # 
-    # v$pathway <- saved_graph
-    # 
-    # v$pathway_name <- saved_pathway_name
-    # 
-    # v$pathway_image <- magick::image_read(gsub(".zip", ".png", input$kegg_data$datapath))
-    # 
-    # v$graphical_data <- graphical_data_generator(v$pathway)
-    # 
-    # if(tryCatch( { kegg_node_mapper(group_graphics = group_graphics[[v$pathway_name]], kegg_pathway_graphics = v$graphical_data, pathway_name = v$pathway_name, pathway_image = v$pathway_image, show_changes = input$show_changes) }
-    #              , error = function(e) {TRUE})) {
-    #   
-    #   output$pathway_load_error <- renderText({paste("<font color=\"#ff0000\"><b>", "Something is wrong with a file", "</b></font>")})
-    #   
-    # } else {
-    #   output$pathway_load_error <- NULL
-    #   v$image_file <- kegg_node_mapper(group_graphics = group_graphics[[v$pathway_name]], kegg_pathway_graphics = v$graphical_data, pathway_name = v$pathway_name, pathway_image = v$pathway_image, show_changes = input$show_changes) %>% 
-    #     image_write(tempfile(fileext='png'), format = 'png')
-    # }
-    
+  #### pathway name rendering ####
+  output$pathway_name_and_source <- renderText({
+    paste("<font color=\"#1f992f\"><b>", v$pathway_name, "</b></font>")
   })
   
   #### swithcher for highlighting changed items ####
-  observeEvent(input$show_changes, {
-    if(input$show_changes) {
-      v$graphical_data <- graphical_data_generator(v$pathway, include_changes = TRUE)
-    } else {
-      v$graphical_data <- graphical_data_generator(v$pathway)
-    }
-    v$image_file <- kegg_node_mapper(group_graphics = v$pathway_data$group_graphics, kegg_pathway_graphics = v$graphical_data, pathway_name = v$pathway_name, pathway_image = v$pathway_image, show_changes = input$show_changes) %>% 
+  ## will come back to this later
+  # observeEvent(input$show_changes, {
+  #   if(input$show_changes) {
+  #     v$graphical_data <- graphical_data_generator(v$pathway, include_changes = TRUE)
+  #   } else {
+  #     v$graphical_data <- graphical_data_generator(v$pathway)
+  #   }
+  #   v$image_file <- kegg_node_mapper(group_graphics = v$pathway_data$group_graphics, kegg_pathway_graphics = v$graphical_data, pathway_name = v$pathway_name, pathway_image = v$pathway_image, show_changes = input$show_changes) %>% 
+  #     image_write(tempfile(fileext='png'), format = 'png')
+  # })
+  
+  observeEvent(input$show_modified_nodes, {
+    v$image_file <- plot_kegg_pathway(graphnel_df = v$graphnel_df, group_graphics = v$pathway$group_nodes, pathway_image = v$pathway_image,
+                                      node_colors = v$node_colors$node_colors, edge_mapping = FALSE, highlight_nodes = v$selected_node_name$node_id, highlight_color = "red",
+                                      col_legend_title = v$node_colors$col_legend_title, color_bar_lims = v$node_colors$color_bar_lims, present_node_modifications = input$show_modified_nodes, removed_nodes = v$pathway$removed_nodes) %>%
       image_write(tempfile(fileext='png'), format = 'png')
   })
   
@@ -813,40 +1155,44 @@ shinyServer(function(input, output, session) {
     
     if(!is.null(input$multiple_choice)) {
       if(input$multiple_choice == "yes") {
-        v$selected_node_name <- unique(rbind(v$selected_node_name, v$graphical_data$node_coords[which(input$image_click[[1]] <= v$graphical_data$node_coords$x_end & input$image_click[[1]] >= v$graphical_data$node_coords$x_start &
-                                                                                                        input$image_click[[2]] <= v$graphical_data$node_coords$y_end & input$image_click[[2]] >= v$graphical_data$node_coords$y_start), c("node_name", "gr_name", "node_id", "entrez_id")]))
+        v$selected_node_name <- unique(rbind(v$selected_node_name, v$graphnel_df$node_table[which(input$image_click[[1]] <= v$graphnel_df$node_table$x_end & input$image_click[[1]] >= v$graphnel_df$node_table$x_start &
+                                                                                                        input$image_click[[2]] <= v$graphnel_df$node_table$y_end & input$image_click[[2]] >= v$graphnel_df$node_table$y_start), c("node_id", "component_id_s", "label")]))
       } else {
-        v$selected_node_name <- setNames(data.frame(matrix(ncol = 4, nrow = 0)), c("node_name", "gr_name", "node_id", "entrez_id"))
-        v$selected_node_name <- v$graphical_data$node_coords[which(input$image_click[[1]] <= v$graphical_data$node_coords$x_end & input$image_click[[1]] >= v$graphical_data$node_coords$x_start &
-                                                                     input$image_click[[2]] <= v$graphical_data$node_coords$y_end & input$image_click[[2]] >= v$graphical_data$node_coords$y_start), c("node_name", "gr_name", "node_id", "entrez_id")]
+        v$selected_node_name <- setNames(data.frame(matrix(ncol = 3, nrow = 0)), c("node_id", "component_id_s", "label"))
+        v$selected_node_name <- v$graphnel_df$node_table[which(input$image_click[[1]] <= v$graphnel_df$node_table$x_end & input$image_click[[1]] >= v$graphnel_df$node_table$x_start &
+                                                                     input$image_click[[2]] <= v$graphnel_df$node_table$y_end & input$image_click[[2]] >= v$graphnel_df$node_table$y_start), c("node_id", "component_id_s", "label")]
       }
     } else {
-      v$selected_node_name <- setNames(data.frame(matrix(ncol = 4, nrow = 0)), c("node_name", "gr_name", "node_id", "entrez_id"))
-      v$selected_node_name <- v$graphical_data$node_coords[which(input$image_click[[1]] <= v$graphical_data$node_coords$x_end & input$image_click[[1]] >= v$graphical_data$node_coords$x_start &
-                                                                   input$image_click[[2]] <= v$graphical_data$node_coords$y_end & input$image_click[[2]] >= v$graphical_data$node_coords$y_start), c("node_name", "gr_name", "node_id", "entrez_id")]
+      v$selected_node_name <- setNames(data.frame(matrix(ncol = 3, nrow = 0)), c("node_id", "component_id_s", "label"))
+      v$selected_node_name <- v$graphnel_df$node_table[which(input$image_click[[1]] <= v$graphnel_df$node_table$x_end & input$image_click[[1]] >= v$graphnel_df$node_table$x_start &
+                                                                   input$image_click[[2]] <= v$graphnel_df$node_table$y_end & input$image_click[[2]] >= v$graphnel_df$node_table$y_start), c("node_id", "component_id_s", "label")]
     }
-    
-    # if(nrow(v$selected_node_name) < 3) {
-    #   output$edge_search <- renderUI(actionButton("search_edge", label = "Search edge"))
-    # } else {
-    #   removeUI(selector = '#edge_search')
-    # }
     
     hide('exp_change_panel')
     
-    if(any(v$pathway_exp_colored, v$pathway_psf_colored)) {
+    if(!is.null(v$node_colors)) {
+      v$image_file <- plot_kegg_pathway(graphnel_df = v$graphnel_df, group_graphics = v$pathway$group_nodes, pathway_image = v$pathway_image,
+                                        node_colors = v$node_colors$node_colors, edge_mapping = FALSE, edge_in_mode = FALSE, highlight_nodes = v$selected_node_name$node_id, highlight_color = "red",
+                                        col_legend_title = v$node_colors$col_legend_title, color_bar_lims = v$node_colors$color_bar_lims, present_node_modifications = input$show_modified_nodes, removed_nodes = v$pathway$removed_nodes) %>%
+        image_write(tempfile(fileext='png'), format = 'png')
       
-      if(v$pathway_exp_colored) {
-        colors <- v$psf_and_colors$exp_colors
+    } else {
+      
+      if(!is.null(v$from_nodes)) {
+        
+        v$image_file <- plot_kegg_pathway(graphnel_df = v$graphnel_df, group_graphics = v$pathway$group_nodes, pathway_image = v$pathway_image,
+                                          node_colors = v$node_colors$node_colors, edge_mapping = FALSE, edge_in_mode = FALSE, highlight_nodes = c(v$from_nodes, v$selected_node_name$node_id), highlight_color = c(rep("green", length(v$from_nodes)), rep("red", nrow(v$selected_node_name))),
+                                          col_legend_title = v$node_colors$col_legend_title, color_bar_lims = v$node_colors$color_bar_lims, present_node_modifications = input$show_modified_nodes, removed_nodes = v$pathway$removed_nodes) %>%
+          image_write(tempfile(fileext='png'), format = 'png')
+        
+        
       } else {
-        colors <- v$psf_and_colors$psf_colors
+        v$image_file <- plot_kegg_pathway(graphnel_df = v$graphnel_df, group_graphics = v$pathway$group_nodes, pathway_image = v$pathway_image,
+                                          node_colors = v$node_colors$node_colors, edge_mapping = FALSE, edge_in_mode = FALSE, highlight_nodes = v$selected_node_name$node_id, highlight_color = "red",
+                                          col_legend_title = v$node_colors$col_legend_title, color_bar_lims = v$node_colors$color_bar_lims, present_node_modifications = input$show_modified_nodes, removed_nodes = v$pathway$removed_nodes) %>%
+          image_write(tempfile(fileext='png'), format = 'png')
       }
       
-      v$image_file <- kegg_node_mapper(group_graphics = v$pathway_data$group_graphics, kegg_pathway_graphics = v$graphical_data, pathway_name = v$pathway_name, pathway_image = v$pathway_image, highlight.genes = v$selected_node_name, color.genes = colors, color_bar_psf_mode = v$color_bar_psf_mode, col_legend_title = v$col_legend_title, draw_color_bar = v$draw_color_bar, color_bar_lims = v$color_bar_lims) %>% 
-        image_write(tempfile(fileext='png'), format = 'png')
-    } else {
-    v$image_file <- kegg_node_mapper(group_graphics = v$pathway_data$group_graphics, kegg_pathway_graphics = v$graphical_data, pathway_name = v$pathway_name, pathway_image = v$pathway_image, highlight.genes = v$selected_node_name, show_changes = input$show_changes) %>% 
-      image_write(tempfile(fileext='png'), format = 'png')
     }
     
     
@@ -858,41 +1204,46 @@ shinyServer(function(input, output, session) {
       if(!is.null(input$multiple_choice)) {
         if(input$multiple_choice == "yes") {
           
-          v$selected_node_name <- unique(rbind(v$selected_node_name, v$graphical_data$node_coords[which(input$image_brush[1:4]$xmax >= v$graphical_data$node_coords$x_end & input$image_brush[1:4]$xmin <= v$graphical_data$node_coords$x_start &
-                                                                                                          input$image_brush[1:4]$ymax >= v$graphical_data$node_coords$y_end & input$image_brush[1:4]$ymin <= v$graphical_data$node_coords$y_start), c("node_name", "gr_name", "node_id", "entrez_id")]))
+          v$selected_node_name <- unique(rbind(v$selected_node_name, v$graphnel_df$node_table[which(input$image_brush[1:4]$xmax >= v$graphnel_df$node_table$x_end & input$image_brush[1:4]$xmin <= v$graphnel_df$node_table$x_start &
+                                                                                                          input$image_brush[1:4]$ymax >= v$graphnel_df$node_table$y_end & input$image_brush[1:4]$ymin <= v$graphnel_df$node_table$y_start), c("node_id", "component_id_s", "label")]))
           
         } else {
-          v$selected_node_name <- setNames(data.frame(matrix(ncol = 4, nrow = 0)), c("node_name", "gr_name", "node_id", "entrez_id"))
-          v$selected_node_name <- v$graphical_data$node_coords[which(input$image_brush[1:4]$xmax >= v$graphical_data$node_coords$x_end & input$image_brush[1:4]$xmin <= v$graphical_data$node_coords$x_start &
-                                                                       input$image_brush[1:4]$ymax >= v$graphical_data$node_coords$y_end & input$image_brush[1:4]$ymin <= v$graphical_data$node_coords$y_start), c("node_name", "gr_name", "node_id", "entrez_id")]
+          v$selected_node_name <- setNames(data.frame(matrix(ncol = 3, nrow = 0)), c("node_id", "component_id_s", "label"))
+          v$selected_node_name <- v$graphnel_df$node_table[which(input$image_brush[1:4]$xmax >= v$graphnel_df$node_table$x_end & input$image_brush[1:4]$xmin <= v$graphnel_df$node_table$x_start &
+                                                                       input$image_brush[1:4]$ymax >= v$graphnel_df$node_table$y_end & input$image_brush[1:4]$ymin <= v$graphnel_df$node_table$y_start), c("node_id", "component_id_s", "label")]
         }
       } else {
-        v$selected_node_name <- setNames(data.frame(matrix(ncol = 4, nrow = 0)), c("node_name", "gr_name", "node_id", "entrez_id"))
-        v$selected_node_name <- v$graphical_data$node_coords[which(input$image_brush[1:4]$xmax >= v$graphical_data$node_coords$x_end & input$image_brush[1:4]$xmin <= v$graphical_data$node_coords$x_start &
-                                                                     input$image_brush[1:4]$ymax >= v$graphical_data$node_coords$y_end & input$image_brush[1:4]$ymin <= v$graphical_data$node_coords$y_start), c("node_name", "gr_name", "node_id", "entrez_id")]
+        v$selected_node_name <- setNames(data.frame(matrix(ncol = 3, nrow = 0)), c("node_id", "component_id_s", "label"))
+        v$selected_node_name <- v$graphnel_df$node_table[which(input$image_brush[1:4]$xmax >= v$graphnel_df$node_table$x_end & input$image_brush[1:4]$xmin <= v$graphnel_df$node_table$x_start &
+                                                                     input$image_brush[1:4]$ymax >= v$graphnel_df$node_table$y_end & input$image_brush[1:4]$ymin <= v$graphnel_df$node_table$y_start), c("node_id", "component_id_s", "label")]
       }
-      
-      # if(nrow(v$selected_node_name) < 3) {
-      #   output$edge_search <- renderUI(actionButton("search_edge", label = "Search edge"))
-      # } else {
-      #   removeUI(selector = '#edge_search')
-      # }
       
       hide('exp_change_panel')
       
-      if(any(v$pathway_exp_colored, v$pathway_psf_colored)) {
+      if(!is.null(v$node_colors)) {
         
-        if(v$pathway_exp_colored) {
-          colors <- v$psf_and_colors$exp_colors
+        v$image_file <- plot_kegg_pathway(graphnel_df = v$graphnel_df, group_graphics = v$pathway$group_nodes, pathway_image = v$pathway_image,
+                                          node_colors = v$node_colors$node_colors, edge_mapping = FALSE, edge_in_mode = FALSE, highlight_nodes = v$selected_node_name$node_id, highlight_color = "red",
+                                          col_legend_title = v$node_colors$col_legend_title, color_bar_lims = v$node_colors$color_bar_lims, present_node_modifications = input$show_modified_nodes, removed_nodes = v$pathway$removed_nodes) %>%
+          image_write(tempfile(fileext='png'), format = 'png')
+        
+      } else {
+        
+        if(!is.null(v$from_nodes)) {
+          
+          v$image_file <- plot_kegg_pathway(graphnel_df = v$graphnel_df, group_graphics = v$pathway$group_nodes, pathway_image = v$pathway_image,
+                                            node_colors = v$node_colors$node_colors, edge_mapping = FALSE, edge_in_mode = FALSE, highlight_nodes = c(v$from_nodes, v$selected_node_name$node_id), highlight_color = c(rep("green", length(v$from_nodes)), rep("red", nrow(v$selected_node_name))),
+                                            col_legend_title = v$node_colors$col_legend_title, color_bar_lims = v$node_colors$color_bar_lims, present_node_modifications = input$show_modified_nodes, removed_nodes = v$pathway$removed_nodes) %>%
+            image_write(tempfile(fileext='png'), format = 'png')
+          
+          
         } else {
-          colors <- v$psf_and_colors$psf_colors
+          v$image_file <- plot_kegg_pathway(graphnel_df = v$graphnel_df, group_graphics = v$pathway$group_nodes, pathway_image = v$pathway_image,
+                                            node_colors = v$node_colors$node_colors, edge_mapping = FALSE, edge_in_mode = FALSE, highlight_nodes = v$selected_node_name$node_id, highlight_color = "red",
+                                            col_legend_title = v$node_colors$col_legend_title, color_bar_lims = v$node_colors$color_bar_lims, present_node_modifications = input$show_modified_nodes, removed_nodes = v$pathway$removed_nodes) %>%
+            image_write(tempfile(fileext='png'), format = 'png')
         }
         
-        v$image_file <- kegg_node_mapper(group_graphics = v$pathway_data$group_graphics, kegg_pathway_graphics = v$graphical_data, pathway_name = v$pathway_name, pathway_image = v$pathway_image, highlight.genes = v$selected_node_name, color.genes = colors, color_bar_psf_mode = v$color_bar_psf_mode, col_legend_title = v$col_legend_title, draw_color_bar = v$draw_color_bar, color_bar_lims = v$color_bar_lims) %>% 
-          image_write(tempfile(fileext='png'), format = 'png')
-      } else {
-      v$image_file <- kegg_node_mapper(group_graphics = v$pathway_data$group_graphics, kegg_pathway_graphics = v$graphical_data, pathway_name = v$pathway_name, pathway_image = v$pathway_image, highlight.genes = v$selected_node_name, show_changes = input$show_changes) %>% 
-        image_write(tempfile(fileext='png'), format = 'png')
       }
       
     }
@@ -904,27 +1255,20 @@ shinyServer(function(input, output, session) {
   })
   
   output$hover_data <- renderText({
-    if(length(which(input$image_hover[[1]] <= v$graphical_data$node_coords$x_end & input$image_hover[[1]] >= v$graphical_data$node_coords$x_start &
-                    input$image_hover[[2]] <= v$graphical_data$node_coords$y_end & input$image_hover[[2]] >= v$graphical_data$node_coords$y_start)) > 0 ) {
+    if(length(which(input$image_hover[[1]] <= v$graphnel_df$node_table$x_end & input$image_hover[[1]] >= v$graphnel_df$node_table$x_start &
+                    input$image_hover[[2]] <= v$graphnel_df$node_table$y_end & input$image_hover[[2]] >= v$graphnel_df$node_table$y_start)) > 0 ) {
       
-      gr_name <- v$graphical_data$node_coords[which(input$image_hover[[1]] <= v$graphical_data$node_coords$x_end & input$image_hover[[1]] >= v$graphical_data$node_coords$x_start &
-                                           input$image_hover[[2]] <= v$graphical_data$node_coords$y_end & input$image_hover[[2]] >= v$graphical_data$node_coords$y_start),10]
+      gr_name <- v$graphnel_df$node_table[which(input$image_hover[[1]] <= v$graphnel_df$node_table$x_end & input$image_hover[[1]] >= v$graphnel_df$node_table$x_start &
+                                           input$image_hover[[2]] <= v$graphnel_df$node_table$y_end & input$image_hover[[2]] >= v$graphnel_df$node_table$y_start),"title"]
       
-      if(any(v$pathway_exp_colored, v$pathway_psf_colored)) {
-        
-        node_id <- v$graphical_data$node_coords[which(input$image_hover[[1]] <= v$graphical_data$node_coords$x_end & input$image_hover[[1]] >= v$graphical_data$node_coords$x_start &
-                                                        input$image_hover[[2]] <= v$graphical_data$node_coords$y_end & input$image_hover[[2]] >= v$graphical_data$node_coords$y_start),8]
-        
-        if(v$pathway_exp_colored) {
-          paste0(gr_name , " | ", "Log FC = ", round(v$psf_and_colors$exp_values[node_id], digits = 3))
-        } else {
-          if(v$pathway_psf_colored) {
-            paste0(gr_name , " | ", "Log FC = ", round(v$psf_and_colors$exp_values[node_id], digits = 3), " log Signal = ", round(v$psf_and_colors$signal_values[node_id], digits = 3))
-          }
-        }
-      } else {
-        gr_name
+      if(!is.null(v$node_colors)) {
+        node_id <- v$graphnel_df$node_table[which(input$image_hover[[1]] <= v$graphnel_df$node_table$x_end & input$image_hover[[1]] >= v$graphnel_df$node_table$x_start &
+                                                        input$image_hover[[2]] <= v$graphnel_df$node_table$y_end & input$image_hover[[2]] >= v$graphnel_df$node_table$y_start),"node_id"]
+        gr_name <- paste0(gr_name, "\n", v$node_colors$hover_text[node_id])
       }
+      
+      ### fix next line issue
+      gsub("<br>", "\n", gr_name)
       
     }
   })
@@ -935,35 +1279,42 @@ shinyServer(function(input, output, session) {
     
     if(v$allow_edge_draw) {
       
-      
-      if(any(v$pathway_exp_colored, v$pathway_psf_colored)) {
+      if(!is.null(v$node_colors)) {
         
-        if(v$pathway_exp_colored) {
-          colors <- v$psf_and_colors$exp_colors
-        } else {
-          colors <- v$psf_and_colors$psf_colors
-        }
-        
-        v$image_file <- kegg_node_mapper(group_graphics = v$pathway_data$group_graphics, kegg_pathway_graphics = v$graphical_data, pathway_name = v$pathway_name, pathway_image = v$pathway_image, highlight.genes = v$selected_node_name, color.genes = colors, color_bar_psf_mode = v$color_bar_psf_mode, col_legend_title = v$col_legend_title, draw_color_bar = v$draw_color_bar, color_bar_lims = v$color_bar_lims, edge_mapping = TRUE, show_changes = input$show_changes, edge_in_mode = input$ingoing_edge) %>% 
+        v$image_file <- plot_kegg_pathway(graphnel_df = v$graphnel_df, group_graphics = v$pathway$group_nodes, pathway_image = v$pathway_image,
+                                          node_colors = v$node_colors$node_colors, edge_mapping = TRUE, edge_in_mode = input$ingoing_edge, highlight_nodes = v$selected_node_name$node_id, highlight_color = "red",
+                                          col_legend_title = v$node_colors$col_legend_title, color_bar_lims = v$node_colors$color_bar_lims, present_node_modifications = input$show_modified_nodes, removed_nodes = v$pathway$removed_nodes) %>%
           image_write(tempfile(fileext='png'), format = 'png')
+        
       } else {
-        v$image_file <- kegg_node_mapper(group_graphics = v$pathway_data$group_graphics, kegg_pathway_graphics = v$graphical_data, pathway_name = v$pathway_name, pathway_image = v$pathway_image, highlight.genes = v$selected_node_name, edge_mapping = TRUE, show_changes = input$show_changes, edge_in_mode = input$ingoing_edge) %>% 
+        v$image_file <- plot_kegg_pathway(graphnel_df = v$graphnel_df, group_graphics = v$pathway$group_nodes, pathway_image = v$pathway_image,
+                                          node_colors = v$node_colors$node_colors, edge_mapping = TRUE, edge_in_mode = input$ingoing_edge, highlight_nodes = v$selected_node_name$node_id, highlight_color = "red",
+                                          col_legend_title = v$node_colors$col_legend_title, color_bar_lims = v$node_colors$color_bar_lims, present_node_modifications = input$show_modified_nodes, removed_nodes = v$pathway$removed_nodes) %>%
           image_write(tempfile(fileext='png'), format = 'png')
       }
-      
-      # v$image_file <- kegg_node_mapper(group_graphics = group_graphics[[v$pathway_name]], kegg_pathway_graphics = v$graphical_data, pathway_name = v$pathway_name, pathway_image = v$pathway_image, highlight.genes = v$selected_node_name, edge_mapping = TRUE, show_changes = input$show_changes, edge_in_mode = input$ingoing_edge) %>% 
-      #   image_write(tempfile(fileext='png'), format = 'png')
     }
     
   })
   
   #### disconnected node(s) checker ####
   observeEvent(input$check_disconnected_nodes,{
-    disconnected_nodes <- disconnected_node_detector(pathway_graph_processing(v$pathway)$graph)
+    disconnected_nodes <- setdiff(v$graphnel_df$node_table$node_id, unique(c(v$graphnel_df$edge_table$from, v$graphnel_df$edge_table$to)))
     
-    v$selected_node_name <- v$graphical_data$node_coords[which(v$graphical_data$node_coords$node_id %in% disconnected_nodes), c("node_name", "gr_name", "node_id", "entrez_id")]
+    v$image_file <- plot_kegg_pathway(graphnel_df = v$graphnel_df, group_graphics = v$pathway$group_nodes, pathway_image = v$pathway_image,
+                                      node_colors = v$node_colors$node_colors, edge_mapping = FALSE, edge_in_mode = FALSE, highlight_nodes = disconnected_nodes, highlight_color = "red",
+                                      col_legend_title = v$node_colors$col_legend_title, color_bar_lims = v$node_colors$color_bar_lims, node_fill_opacity = 0.5, present_node_modifications = input$show_modified_nodes, removed_nodes = v$pathway$removed_nodes) %>%
+      image_write(tempfile(fileext='png'), format = 'png')
+  })
+  
+  #### duplicated node(s) checker ####
+  observeEvent(input$check_duplicated_nodes,{
+    duplicated_labels <- v$graphnel_df$node_table$label[which(duplicated(v$graphnel_df$node_table$label))]
     
-    v$image_file <- kegg_node_mapper(group_graphics = v$pathway_data$group_graphics, kegg_pathway_graphics = v$graphical_data, pathway_name = v$pathway_name, pathway_image = v$pathway_image, highlight.genes = v$selected_node_name, show_changes = input$show_changes, highlight_color = "#a3297a", opacity = 0.5) %>% 
+    duplicated_nodes <- v$graphnel_df$node_table$node_id[which(v$graphnel_df$node_table$label %in% duplicated_labels)]
+    
+    v$image_file <- plot_kegg_pathway(graphnel_df = v$graphnel_df, group_graphics = v$pathway$group_nodes, pathway_image = v$pathway_image,
+                                      node_colors = v$node_colors$node_colors, edge_mapping = FALSE, edge_in_mode = FALSE, highlight_nodes = duplicated_nodes, highlight_color = "red",
+                                      col_legend_title = v$node_colors$col_legend_title, color_bar_lims = v$node_colors$color_bar_lims, node_fill_opacity = 0.5, present_node_modifications = input$show_modified_nodes, removed_nodes = v$pathway$removed_nodes) %>%
       image_write(tempfile(fileext='png'), format = 'png')
     
   })
@@ -986,44 +1337,21 @@ shinyServer(function(input, output, session) {
     hide('exp_change_panel')
     v$allow_edge_draw <- TRUE
     updateCheckboxInput(session, "event_node_mode", value = FALSE)
-    v$selected_node_name <- setNames(data.frame(matrix(ncol = 4, nrow = 0)), c("node_name", "gr_name", "node_id", "entrez_id"))
-    v$image_file <- kegg_node_mapper(group_graphics = v$pathway_data$group_graphics, kegg_pathway_graphics = v$graphical_data, pathway_name = v$pathway_name, pathway_image = v$pathway_image, highlight.genes = v$selected_node_name, show_changes = input$show_changes) %>% 
+    v$selected_node_name <- setNames(data.frame(matrix(ncol = 3, nrow = 0)), c("node_id", "component_id_s", "label"))
+    v$from_nodes <- NULL
+    v$image_file <- plot_kegg_pathway(graphnel_df = v$graphnel_df, group_graphics = v$pathway$group_nodes, pathway_image = v$pathway_image,
+                                      node_colors = v$node_colors$node_colors, edge_mapping = FALSE, edge_in_mode = FALSE, highlight_nodes = NULL, highlight_color = "red",
+                                      col_legend_title = v$node_colors$col_legend_title, color_bar_lims = v$node_colors$color_bar_lims, present_node_modifications = input$show_modified_nodes, removed_nodes = v$pathway$removed_nodes) %>%
       image_write(tempfile(fileext='png'), format = 'png')
     
-    v$visnet_list <- visnet_creator(v$graphical_data)
+    ### continue from here
+    # v$visnet_list <- visnet_creator(v$graphical_data)
     
-    v$pathway_exp_colored = FALSE
+    v$node_colors <- NULL
     
-    v$pathway_psf_colored = FALSE
-    
-  })
+  }, ignoreInit = TRUE)
   
-  #### psf visualization ####
-  observeEvent(input$psf_higlight, {
-    
-    if(input$psf_mode == TRUE) {
-      
-      v$selected_node_name <- v$graphical_data$node_coords[which(v$graphical_data$node_coords$node_id %in% v$ordered_nodes[v$ordered_node_id]), c("node_name", "gr_name", "node_id", "entrez_id")]
-      
-      v$image_file <- kegg_node_mapper(group_graphics = v$pathway_data$group_graphics, kegg_pathway_graphics = v$graphical_data, pathway_name = v$pathway_name, pathway_image = v$pathway_image, highlight.genes = v$selected_node_name, show_changes = input$show_changes) %>% 
-        image_write(tempfile(fileext='png'), format = 'png')
-      
-      v$ordered_node_id <- v$ordered_node_id + 1
-    }
-    
-  })
-  
-  observeEvent(input$psf_mode, {
-    if(input$psf_mode == TRUE) {
-      v$ordered_nodes <- setdiff(names(v$pathway$order$node.order), disconnected_node_detector(v$pathway$graph)) 
-    }
-    v$ordered_node_id <- 1
-    v$selected_node_name <- setNames(data.frame(matrix(ncol = 4, nrow = 0)), c("node_name", "gr_name", "node_id", "entrez_id"))
-    v$image_file <- kegg_node_mapper(group_graphics = v$pathway_data$group_graphics, kegg_pathway_graphics = v$graphical_data, pathway_name = v$pathway_name, pathway_image = v$pathway_image, highlight.genes = v$selected_node_name, show_changes = input$show_changes) %>% 
-      image_write(tempfile(fileext='png'), format = 'png')
-  })
-  
-  #### rigth click dialog ####
+  #### right click dialog ####
   observeEvent(input$right_click, {
     
     if(input$app_mode == "Curation") {
@@ -1041,9 +1369,11 @@ shinyServer(function(input, output, session) {
         hide('dir_switch')
         hide('delete_nodes')
         hide('edit_edge')
+        hide('connect_to_button')
       } else {
         if(nrow(v$selected_node_name) == 1) {
           show('edge_search_dialog')
+          show('connect_to_button')
           show('transition_maker_button')
           show('event_association')
           show('delete_nodes')
@@ -1054,13 +1384,13 @@ shinyServer(function(input, output, session) {
           hide('edit_edge')
         } else {
           if(nrow(v$selected_node_name) == 2) {
-            if(nrow(as.data.table(v$graphical_data$edge_coords)[from == v$selected_node_name[1,"node_id"] & to == v$selected_node_name[2,"node_id"] | from == v$selected_node_name[2,"node_id"] & to == v$selected_node_name[1,"node_id"]]) == 0) {
+            if(nrow(as.data.table(v$graphnel_df$edge_table)[from == v$selected_node_name[1,"node_id"] & to == v$selected_node_name[2,"node_id"] | from == v$selected_node_name[2,"node_id"] & to == v$selected_node_name[1,"node_id"]]) == 0) {
               show('add_edge_button')
               hide('dir_switch')
               hide('edge_delete_button')
               hide('edit_edge')
             } else {
-              if(nrow(as.data.table(v$graphical_data$edge_coords)[from == v$selected_node_name[1,"node_id"] & to == v$selected_node_name[2,"node_id"] | from == v$selected_node_name[2,"node_id"] & to == v$selected_node_name[1,"node_id"]]) == 1) {
+              if(nrow(as.data.table(v$graphnel_df$edge_table)[from == v$selected_node_name[1,"node_id"] & to == v$selected_node_name[2,"node_id"] | from == v$selected_node_name[2,"node_id"] & to == v$selected_node_name[1,"node_id"]]) == 1) {
                 hide('add_edge_button')
                 show('dir_switch')
                 show('edge_delete_button')
@@ -1073,6 +1403,7 @@ shinyServer(function(input, output, session) {
               }
             }
             
+            show('connect_to_button')
             show('edge_search_dialog')
             show('transition_maker_button')
             show('event_association')
@@ -1085,6 +1416,7 @@ shinyServer(function(input, output, session) {
             hide('dir_switch')
             hide('add_new_node')
             hide('edit_edge')
+            show('connect_to_button')
             show('transition_maker_button')
             show('event_association')
             show('delete_nodes')
@@ -1094,6 +1426,7 @@ shinyServer(function(input, output, session) {
       
     } else {
       
+      hide('connect_to_button')
       hide('edge_search_dialog')
       hide('add_edge_button')
       hide('event_association')
@@ -1115,8 +1448,8 @@ shinyServer(function(input, output, session) {
         
         if(nrow(v$selected_node_name) == 2) {
           
-          if(paste(v$selected_node_name[c(1,2),"node_id"], collapse = ";") %in% paste(v$graphical_data$edge_coords$from, v$graphical_data$edge_coords$to, sep = ";") |
-             paste(v$selected_node_name[c(2,1),"node_id"], collapse = ";") %in% paste(v$graphical_data$edge_coords$from, v$graphical_data$edge_coords$to, sep = ";")
+          if(paste(v$selected_node_name[c(1,2),"node_id"], collapse = ";") %in% paste(v$graphnel_df$edge_table$from, v$graphnel_df$edge_table$to, sep = ";") |
+             paste(v$selected_node_name[c(2,1),"node_id"], collapse = ";") %in% paste(v$graphnel_df$edge_table$from, v$graphnel_df$edge_table$to, sep = ";")
           ) {
             show('change_edge_weight_button')
           }
@@ -1170,7 +1503,7 @@ shinyServer(function(input, output, session) {
     
     if(nrow(v$database_search_node) == 1) {
       
-      v$database_out <- node_pairs_generator(v$database_search_node, pathway_realted = TRUE, pathway_data = v$graphical_data$node_coords, direction = input$direction_state, direction_state = input$direction_side)
+      v$database_out <- node_pairs_generator(v$database_search_node, pathway_realted = TRUE, pathway_data = v$graphnel_df$node_table, direction = input$direction_state, direction_state = input$direction_side)
       
     } else {
       
@@ -1208,11 +1541,11 @@ shinyServer(function(input, output, session) {
     hide('edge_creating_panel')
   })
   
-  #### database data updater based on diretion switcher ####
+  #### database data updater based on direction switcher ####
   observe({
     if(v$searching_state) {
       if(nrow(v$database_search_node) == 1) {
-        v$database_out <- node_pairs_generator(v$database_search_node, pathway_realted = TRUE, pathway_data = v$graphical_data$node_coords, direction = input$direction_state, direction_state = input$direction_side)
+        v$database_out <- node_pairs_generator(v$database_search_node, pathway_realted = TRUE, pathway_data = v$graphnel_df$node_table, direction = input$direction_state, direction_state = input$direction_side)
       } else {
         v$database_out <- node_pairs_generator(v$database_search_node, direction = input$direction_state, direction_state = input$direction_side)
       }
@@ -1226,10 +1559,12 @@ shinyServer(function(input, output, session) {
         
         show('add_selected_edge')
         if(input$edge_table_rows_selected != v$previous_row_selection) {
-          highlight_genes <- rbind(v$graphical_data$node_coords[which(v$graphical_data$node_coords$node_id %in% v$database_out[input$edge_table_rows_selected, 9]), c("node_name", "gr_name", "node_id", "entrez_id")],
-                                   v$graphical_data$node_coords[which(v$graphical_data$node_coords$node_id %in% v$database_out[input$edge_table_rows_selected, 10]), c("node_name", "gr_name", "node_id", "entrez_id")])
+          highlight_genes <- rbind(v$graphnel_df$node_table[which(v$graphnel_df$node_table$node_id %in% v$database_out[input$edge_table_rows_selected, 9]), c("node_id", "component_id_s")],
+                                   v$graphnel_df$node_table[which(v$graphnel_df$node_table$node_id %in% v$database_out[input$edge_table_rows_selected, 10]), c("node_id", "component_id_s")])
           
-          v$image_file <- kegg_node_mapper(group_graphics = v$pathway_data$group_graphics, kegg_pathway_graphics = v$graphical_data, pathway_name = v$pathway_name, pathway_image = v$pathway_image, highlight.genes = highlight_genes, edge_mapping = TRUE, advanced_edge_ampping = TRUE, show_changes = input$show_changes) %>%
+          v$image_file <- plot_kegg_pathway(graphnel_df = v$graphnel_df, group_graphics = v$pathway$group_nodes, pathway_image = v$pathway_image,
+                                            node_colors = v$node_colors$node_colors, custom_edge_mapping = TRUE, edge_mapping = TRUE, edge_in_mode = TRUE, highlight_nodes = highlight_genes$node_id, highlight_color = "red",
+                                            col_legend_title = v$node_colors$col_legend_title, color_bar_lims = v$node_colors$color_bar_lims, present_node_modifications = input$show_modified_nodes, removed_nodes = v$pathway$removed_nodes) %>%
             image_write(tempfile(fileext='png'), format = 'png')
           
           v$previous_row_selection <- input$edge_table_rows_selected
@@ -1251,11 +1586,11 @@ shinyServer(function(input, output, session) {
     show('edge_creating_panel')
     
     updateSelectizeInput(session, "interaction_source", selected = "database")
-    updateSelectizeInput(session, "type", selected = "")
-    updateSelectizeInput(session, "subtype", selected = "")
+    updateSelectizeInput(session, "subtype1", selected = "")
+    updateSelectizeInput(session, "subtype2", selected = "")
     
-    v$selected_interaction <- list(source = paste(v$database_out[input$edge_table_rows_selected, "INTERACTION_DATA_SOURCE"], "database"), selected_interaction = rbind(v$graphical_data$node_coords[which(v$graphical_data$node_coords$node_id %in% v$database_out[input$edge_table_rows_selected, 9]), c("gr_name", "node_id")],
-                                                                                                                                                                       v$graphical_data$node_coords[which(v$graphical_data$node_coords$node_id %in% v$database_out[input$edge_table_rows_selected, 10]), c("gr_name", "node_id")]))
+    v$selected_interaction <- list(source = paste(v$database_out[input$edge_table_rows_selected, "INTERACTION_DATA_SOURCE"], "database"), selected_interaction = rbind(v$graphnel_df$node_table[which(v$graphnel_df$node_table$node_id %in% v$database_out[input$edge_table_rows_selected, 9]), c("label", "node_id")],
+                                                                                                                                                                       v$graphnel_df$node_table[which(v$graphnel_df$node_table$node_id %in% v$database_out[input$edge_table_rows_selected, 10]), c("label", "node_id")]))
   })
   
   #### adding new edge from image ####
@@ -1263,27 +1598,47 @@ shinyServer(function(input, output, session) {
     v$edge_edit_stage <- FALSE
     updateActionButton(session, "create_edge", label = "Create edge")
     updateSelectizeInput(session, "interaction_source", selected = "image")
-    updateSelectizeInput(session, "type", selected = "")
-    updateSelectizeInput(session, "subtype", selected = "")
+    updateSelectizeInput(session, "subtype1", selected = "")
+    updateSelectizeInput(session, "subtype2", selected = "")
     show('edge_creating_panel')
     show('image_edge_direction_switch')
     
-    v$selected_interaction <- list(source = "database", selected_interaction = v$selected_node_name[,c("gr_name", "node_id")])
+    v$selected_interaction <- list(source = "database", selected_interaction = v$selected_node_name[,c("label", "node_id")])
     
-    v$image_file <- kegg_node_mapper(group_graphics = v$pathway_data$group_graphics, kegg_pathway_graphics = v$graphical_data, pathway_name = v$pathway_name, pathway_image = v$pathway_image, highlight.genes = v$selected_node_name, edge_mapping = TRUE, advanced_edge_ampping = TRUE, show_changes = input$show_changes) %>%
+    v$image_file <- plot_kegg_pathway(graphnel_df = v$graphnel_df, group_graphics = v$pathway$group_nodes, pathway_image = v$pathway_image,
+                                      node_colors = v$node_colors$node_colors, custom_edge_mapping = TRUE, edge_mapping = TRUE, edge_in_mode = TRUE, highlight_nodes = v$selected_node_name$node_id, highlight_color = "red",
+                                      col_legend_title = v$node_colors$col_legend_title, color_bar_lims = v$node_colors$color_bar_lims, present_node_modifications = input$show_modified_nodes, removed_nodes = v$pathway$removed_nodes) %>%
       image_write(tempfile(fileext='png'), format = 'png')
     
+  })
+  
+  #### many to many edge adder ####
+  observeEvent(input$connect_to, {
+    v$from_nodes <- v$selected_node_name$node_id
+    
+    v$image_file <- plot_kegg_pathway(graphnel_df = v$graphnel_df, group_graphics = v$pathway$group_nodes, pathway_image = v$pathway_image,
+                                      node_colors = v$node_colors$node_colors, highlight_nodes = v$selected_node_name$node_id, highlight_color = "green",
+                                      col_legend_title = v$node_colors$col_legend_title, color_bar_lims = v$node_colors$color_bar_lims, present_node_modifications = input$show_modified_nodes, removed_nodes = v$pathway$removed_nodes) %>%
+      image_write(tempfile(fileext='png'), format = 'png')
+    
+    updateSelectizeInput(session, "interaction_source", selected = "image")
+    show('edge_creating_panel')
+    show('node_selecion_message')
   })
   
   #### edge direction switcher for image based edge adding ####
   observeEvent(input$image_edge_direction, {
     if(input$image_edge_direction) {
-      v$selected_interaction <- list(source = "database", selected_interaction = v$selected_node_name[,c("gr_name", "node_id")])
-      v$image_file <- kegg_node_mapper(group_graphics = v$pathway_data$group_graphics, kegg_pathway_graphics = v$graphical_data, pathway_name = v$pathway_name, pathway_image = v$pathway_image, highlight.genes = v$selected_node_name, edge_mapping = TRUE, advanced_edge_ampping = TRUE, show_changes = input$show_changes) %>%
+      v$selected_interaction <- list(source = "database", selected_interaction = v$selected_node_name[,c("label", "node_id")])
+      v$image_file <- plot_kegg_pathway(graphnel_df = v$graphnel_df, group_graphics = v$pathway$group_nodes, pathway_image = v$pathway_image,
+                                        node_colors = v$node_colors$node_colors, custom_edge_mapping = TRUE, edge_mapping = TRUE, edge_in_mode = TRUE, highlight_nodes = v$selected_node_name$node_id, highlight_color = "red",
+                                        col_legend_title = v$node_colors$col_legend_title, color_bar_lims = v$node_colors$color_bar_lims, present_node_modifications = input$show_modified_nodes, removed_nodes = v$pathway$removed_nodes) %>%
         image_write(tempfile(fileext='png'), format = 'png')
     } else {
-      v$selected_interaction <- list(source = "database", selected_interaction = v$selected_node_name[2:1,c("gr_name", "node_id")])
-      v$image_file <- kegg_node_mapper(group_graphics = v$pathway_data$group_graphics, kegg_pathway_graphics = v$graphical_data, pathway_name = v$pathway_name, pathway_image = v$pathway_image, highlight.genes = v$selected_node_name[2:1,], edge_mapping = TRUE, advanced_edge_ampping = TRUE, show_changes = input$show_changes) %>%
+      v$selected_interaction <- list(source = "database", selected_interaction = v$selected_node_name[2:1,c("label", "node_id")])
+      v$image_file <- plot_kegg_pathway(graphnel_df = v$graphnel_df, group_graphics = v$pathway$group_nodes, pathway_image = v$pathway_image,
+                                        node_colors = v$node_colors$node_colors, custom_edge_mapping = TRUE, edge_mapping = TRUE, edge_in_mode = TRUE, highlight_nodes = v$selected_node_name$node_id[2:1], highlight_color = "red",
+                                        col_legend_title = v$node_colors$col_legend_title, color_bar_lims = v$node_colors$color_bar_lims, present_node_modifications = input$show_modified_nodes, removed_nodes = v$pathway$removed_nodes) %>%
         image_write(tempfile(fileext='png'), format = 'png')
     }
   }, ignoreInit = T)
@@ -1292,23 +1647,23 @@ shinyServer(function(input, output, session) {
   observeEvent(input$edit_edge, {
     v$database_edit_node <- v$selected_node_name
     v$edge_edit_stage <- TRUE
-    selected_edge <- as.data.table(v$graphical_data$edge_coords)[from == v$selected_node_name[1,"node_id"] & to == v$selected_node_name[2,"node_id"] | from == v$selected_node_name[2,"node_id"] & to == v$selected_node_name[1,"node_id"]]
+    selected_edge <- as.data.table(v$graphnel_df$edge_table)[from == v$selected_node_name[1,"node_id"] & to == v$selected_node_name[2,"node_id"] | from == v$selected_node_name[2,"node_id"] & to == v$selected_node_name[1,"node_id"]]
     
-    updateSelectizeInput(session, "type", selected = unname(unlist(graph::edgeData(v$pathway$grap, selected_edge$from, selected_edge$to, attr = "subtype1"))))
-    updateSelectizeInput(session, "subtype", selected = unname(unlist(graph::edgeData(v$pathway$grap, selected_edge$from, selected_edge$to, attr = "subtype2"))))
+    updateSelectizeInput(session, "subtype1", selected = selected_edge$subtype1) # unname(unlist(graph::edgeData(v$pathway$grap, selected_edge$from, selected_edge$to, attr = "subtype1"))))
+    updateSelectizeInput(session, "subtype2", selected = selected_edge$subtype2) # unname(unlist(graph::edgeData(v$pathway$grap, selected_edge$from, selected_edge$to, attr = "subtype2"))))
     updateSelectizeInput(session, "interaction_source", selected = "")
     updateActionButton(session, "create_edge", label = "Edit edge")
     show('edge_creating_panel')
     
-    selected_interaction <- rbind(v$graphical_data$node_coords[which(v$graphical_data$node_coords$node_id == selected_edge$from), c("gr_name", "node_id")],
-                                  v$graphical_data$node_coords[which(v$graphical_data$node_coords$node_id == selected_edge$to), c("gr_name", "node_id")])
+    selected_interaction <- rbind(v$graphnel_df$node_table[which(v$graphnel_df$node_table$node_id == selected_edge$from), c("label", "node_id")],
+                                  v$graphnel_df$node_table[which(v$graphnel_df$node_table$node_id == selected_edge$to), c("label", "node_id")])
     
     v$selected_interaction <- list(source = "", selected_interaction = selected_interaction)
     
   })
   
   output$edge_info <- renderText({
-    paste("<b>", paste0(v$selected_interaction$selected_interaction[1,"gr_name"], " to ", v$selected_interaction$selected_interaction[2,"gr_name"]), "</b>")
+    paste("<b>", paste0(v$selected_interaction$selected_interaction[1,"label"], " to ", v$selected_interaction$selected_interaction[2,"label"]), "</b>")
   })
   
   observeEvent(input$close_panel, {
@@ -1323,29 +1678,84 @@ shinyServer(function(input, output, session) {
   #### edge assigning to graph and editing existed one ####
   observeEvent(input$create_edge, {
     
-    if(input$type == "" | is.null(input$interaction_source)) {
+    if(input$subtype1 == "" | is.null(input$interaction_source)) {
       v$edge_adding_error <- "Fill all necessary fields"
       delay(3000, v$edge_adding_error <- "")
     } else {
+      edge_id <- paste0(v$selected_interaction$selected_interaction[1,"node_id"], "|", v$selected_interaction$selected_interaction[2,"node_id"])
       if(v$edge_edit_stage) {
-        graph::edgeData(v$pathway$graph, v$selected_interaction$selected_interaction[1,"node_id"], v$selected_interaction$selected_interaction[2,"node_id"], attr = "subtype1") <- input$type
-        graph::edgeData(v$pathway$graph, v$selected_interaction$selected_interaction[1,"node_id"], v$selected_interaction$selected_interaction[2,"node_id"], attr = "subtype2") <- input$subtype
-        graph::edgeData(v$pathway$graph, v$selected_interaction$selected_interaction[1,"node_id"], v$selected_interaction$selected_interaction[2,"node_id"], attr = "change_info") <- "attr_change"
-        data_source <- paste(input$interaction_source, collapse = ", ")
-        graph::edgeData(v$pathway$graph, v$selected_interaction$selected_interaction[1,"node_id"], v$selected_interaction$selected_interaction[2,"node_id"], attr = "data_source") <- data_source
+        
+        v$graphnel_df$edge_table[edge_id, "subtype1"] <-  input$subtype1
+        v$graphnel_df$edge_table[edge_id, "subtype2"] <-  input$subtype2
+        v$graphnel_df$edge_table[edge_id, "color"] <- line_col[input$subtype1]
+        v$graphnel_df$edge_table[edge_id, "arrows.to.type"] <- kegg_arrows_type[input$subtype1]
+        v$graphnel_df$edge_table[edge_id, "dashes"] <- input$subtype2 == "indirect effect" | input$subtype1 == "indirect effect"
+        v$graphnel_df$edge_table[edge_id, "change_info"] <-  "attr_change"
+        v$graphnel_df$edge_table[edge_id, "data_source"] <-  paste(input$interaction_source, collapse = ", ")
+        
         v$pathway_change_alert <- v$pathway_change_alert + 1
         hide('edge_creating_panel')
       } else {
-        data_source <- input$interaction_source
-        data_source[which(data_source == "database")] <- v$selected_interaction$source
-        data_source <- paste(data_source, collapse = ", ")
-        if(!graph::isAdjacent(v$pathway$graph, from = v$selected_interaction$selected_interaction[1,"node_id"], to = v$selected_interaction$selected_interaction[2,"node_id"])) {
-          v$pathway$graph = graph::addEdge(v$selected_interaction$selected_interaction[1,"node_id"], v$selected_interaction$selected_interaction[2,"node_id"], v$pathway$graph)
+        
+        if(!is.null(v$from_nodes)) {
+          
+          new_edges <- Reduce(rbind, lapply(v$from_nodes, function(x) {
+            
+            data.frame(
+              id = paste0(rep(x, length(v$selected_node_name$node_id)), "|", v$selected_node_name$node_id),
+              from = rep(x, length(v$selected_node_name$node_id)),
+              to = v$selected_node_name$node_id,
+              color = line_col[input$subtype1],
+              arrows.to.enabled = TRUE,
+              arrows.to.type = kegg_arrows_type[input$subtype1],
+              label = "",
+              dashes = input$subtype2 == "indirect effect" | input$subtype1 == "indirect effect",
+              type = "",
+              subtype1 = input$subtype1,
+              subtype2 = input$subtype2,
+              state = "",
+              weight = 1,
+              existence = "exist",
+              change_info = "added",
+              data_source = "image",
+              row.names = paste0(rep(x, length(v$selected_node_name$node_id)), "|", v$selected_node_name$node_id)
+            )
+            
+          }))
+          
+          v$graphnel_df$edge_table[rownames(new_edges),] <- new_edges
+          hide('node_selecion_message')
+          v$from_nodes <- NULL
+        } else {
+          data_source <- input$interaction_source
+          data_source[which(data_source == "database")] <- v$selected_interaction$source
+          data_source <- paste(data_source, collapse = ", ")
+          if(!(edge_id %in% rownames(v$graphnel_df$edge_table))) {
+            
+            new_edge <- data.frame(
+              id = edge_id,
+              from = v$selected_interaction$selected_interaction[1,"node_id"],
+              to = v$selected_interaction$selected_interaction[2,"node_id"],
+              color = line_col[input$subtype1],
+              arrows.to.enabled = TRUE,
+              arrows.to.type = kegg_arrows_type[input$subtype1],
+              label = "",
+              dashes = input$subtype2 == "indirect effect" | input$subtype1 == "indirect effect",
+              type = "",
+              subtype1 = input$subtype1,
+              subtype2 = input$subtype2,
+              state = "",
+              weight = 1,
+              existence = "exist",
+              change_info = "added",
+              data_source = data_source,
+              row.names = edge_id
+            )
+            
+            v$graphnel_df$edge_table <- rbind(v$graphnel_df$edge_table, new_edge)
+          }
         }
-        graph::edgeData(v$pathway$graph, v$selected_interaction$selected_interaction[1,"node_id"], v$selected_interaction$selected_interaction[2,"node_id"], attr = "subtype1") <- input$type
-        graph::edgeData(v$pathway$graph, v$selected_interaction$selected_interaction[1,"node_id"], v$selected_interaction$selected_interaction[2,"node_id"], attr = "subtype2") <- input$subtype
-        graph::edgeData(v$pathway$graph, v$selected_interaction$selected_interaction[1,"node_id"], v$selected_interaction$selected_interaction[2,"node_id"], attr = "existence") <- "added"
-        graph::edgeData(v$pathway$graph, v$selected_interaction$selected_interaction[1,"node_id"], v$selected_interaction$selected_interaction[2,"node_id"], attr = "data_source") <- data_source
+        
         v$pathway_change_alert <- v$pathway_change_alert + 1
         hide('edge_creating_panel')
         hide('image_edge_direction_switch')
@@ -1356,26 +1766,22 @@ shinyServer(function(input, output, session) {
   
   #### edge direction switch ####
   observeEvent(input$edge_direction_switch, {
-    index <- unique(which(v$graphical_data$edge_coords$from %in% v$selected_node_name[,"node_id"] & v$graphical_data$edge_coords$to %in% v$selected_node_name[,"node_id"]))
+    index <- unique(which(v$graphnel_df$edge_table$from %in% v$selected_node_name[,"node_id"] & v$graphnel_df$edge_table$to %in% v$selected_node_name[,"node_id"]))
     
-    from <- v$graphical_data$edge_coords$from[index]
-    to <- v$graphical_data$edge_coords$to[index]
+    from <- v$graphnel_df$edge_table$from[index]
+    to <- v$graphnel_df$edge_table$to[index]
     
-    v$pathway$graph <- edge_redirector(from = from, to = to, g = v$pathway$graph)
+    v$graphnel_df$edge_table$from[index] <- to
+    v$graphnel_df$edge_table$to[index] <- from
     
     v$pathway_change_alert <- v$pathway_change_alert + 1
   })
   
   #### delete edge ####
   observeEvent(input$edge_delete, {
-    index <- unique(which(v$graphical_data$edge_coords$from %in% v$selected_node_name[,"node_id"] & v$graphical_data$edge_coords$to %in% v$selected_node_name[,"node_id"]))
+    index <- unique(which(v$graphnel_df$edge_table$from %in% v$selected_node_name[,"node_id"] & v$graphnel_df$edge_table$to %in% v$selected_node_name[,"node_id"]))
     
-    from <- v$graphical_data$edge_coords$from[index]
-    to <- v$graphical_data$edge_coords$to[index]
-    
-    # v$pathway$graph <- graph::removeEdge(from = from, to = to, v$pathway$graph)
-    
-    graph::edgeData(v$pathway$graph, from = from, to = to, attr = "existence") <- "removed"
+    v$graphnel_df$edge_table[index, "existence"] <- "removed"
     
     v$pathway_change_alert <- v$pathway_change_alert + 1
   })
@@ -1390,63 +1796,64 @@ shinyServer(function(input, output, session) {
   })
   
   #### event association ####
-  observeEvent(input$associate_with_event_node, {
-    if("bio_event" %in% unlist(graph::nodeData(v$pathway$graph, v$selected_node_name[,"node_id"], attr = "type"))) {
-      event_ids <- names(which(unlist(graph::nodeData(v$pathway$graph, v$selected_node_name[,"node_id"], attr = "type")) == "bio_event"))
-      gene_ids <- names(which(unlist(graph::nodeData(v$pathway$graph, v$selected_node_name[,"node_id"], attr = "type")) != "bio_event"))
-      
-      if(length(event_ids) > 0 & length(event_ids) < 2 & length(gene_ids) > 0) {
-        v$pathway$graph <- graph::addEdge(gene_ids, event_ids, v$pathway$graph)
-        graph::edgeData(v$pathway$graph, gene_ids, event_ids, attr = "data_source") <- "image"
-        graph::edgeData(v$pathway$graph, gene_ids, event_ids, attr = "subtype1") <- "activation"
-        graph::edgeData(v$pathway$graph, gene_ids, event_ids, attr = "subtype2") <- "indirect effect"
-        
-        v$pathway_change_alert <- v$pathway_change_alert + 1
-      }
-    } else {
-      v$allow_edge_draw <- FALSE
-      show("event_node_adding_panel")
-    }
-    
-  })
-  
-  #### adding new node ####
-  observeEvent(input$add_node, {
-    
-    if(is.null(input$image_brush[1:4])) {
-      v$node_adding_error <- "Please specify node location"
-      delay(3000, v$node_adding_error <- NULL)
-    } else {
-      new_node_num <- as.character(max(as.integer(v$pathway$graph@nodes)) + 1)
-      v$pathway$graph <- graph::addNode(new_node_num, v$pathway$graph)
-      graph::nodeData(v$pathway$graph, new_node_num, attr = "label") <- input$event_node_name
-      graph::nodeData(v$pathway$graph, new_node_num, attr = "kegg.name") <- input$event_node_name
-      graph::nodeData(v$pathway$graph, new_node_num, attr = "data_source") <- input$node_source
-      graph::nodeData(v$pathway$graph, new_node_num, attr = "type") <- "bio_event"
-      graph::nodeData(v$pathway$graph, new_node_num, attr = "kegg.id") <- new_node_num
-      graph::nodeData(v$pathway$graph, new_node_num, attr = "kegg.gr.x") <- input$image_brush[[1]] + (input$image_brush[[2]] - input$image_brush[[1]])*0.5
-      graph::nodeData(v$pathway$graph, new_node_num, attr = "kegg.gr.y") <- input$image_brush[[3]] + (input$image_brush[[4]] - input$image_brush[[3]])*0.5
-      graph::nodeData(v$pathway$graph, new_node_num, attr = "kegg.gr.width") <- input$image_brush[[2]] - input$image_brush[[1]]
-      graph::nodeData(v$pathway$graph, new_node_num, attr = "kegg.gr.height") <- input$image_brush[[4]] - input$image_brush[[3]]
-      
-      print(v$selected_node_name[,"node_id"])
-      v$pathway$graph <- graph::addEdge(v$selected_node_name[,"node_id"], new_node_num, v$pathway$graph)
-      graph::edgeData(v$pathway$graph, v$selected_node_name[,"node_id"], new_node_num, attr = "data_source") <- input$node_source
-      graph::edgeData(v$pathway$graph, v$selected_node_name[,"node_id"], new_node_num, attr = "subtype1") <- "activation"
-      graph::edgeData(v$pathway$graph, v$selected_node_name[,"node_id"], new_node_num, attr = "subtype2") <- "indirect effect"
-      
-      v$pathway_change_alert <- v$pathway_change_alert + 1
-      hide('event_node_adding_panel')
-      v$allow_edge_draw <- TRUE
-      updateCheckboxInput(session, "event_node_mode", value = FALSE)
-    }
-    
-    if(!(input$event_node_name %in% v$event_node_type)) {
-      v$event_node_type <- unique(c(scan(file = "event_names.txt", what = "character", sep = "\t"), input$event_node_name))
-      write(v$event_node_type, file = "event_names.txt", sep = "\t")
-    }
-    
-  })
+  ## will come to this later
+  # observeEvent(input$associate_with_event_node, {
+  #   if("bio_event" %in% unlist(graph::nodeData(v$pathway$graph, v$selected_node_name[,"node_id"], attr = "type"))) {
+  #     event_ids <- names(which(unlist(graph::nodeData(v$pathway$graph, v$selected_node_name[,"node_id"], attr = "type")) == "bio_event"))
+  #     gene_ids <- names(which(unlist(graph::nodeData(v$pathway$graph, v$selected_node_name[,"node_id"], attr = "type")) != "bio_event"))
+  #     
+  #     if(length(event_ids) > 0 & length(event_ids) < 2 & length(gene_ids) > 0) {
+  #       v$pathway$graph <- graph::addEdge(gene_ids, event_ids, v$pathway$graph)
+  #       graph::edgeData(v$pathway$graph, gene_ids, event_ids, attr = "data_source") <- "image"
+  #       graph::edgeData(v$pathway$graph, gene_ids, event_ids, attr = "subtype1") <- "activation"
+  #       graph::edgeData(v$pathway$graph, gene_ids, event_ids, attr = "subtype2") <- "indirect effect"
+  #       
+  #       v$pathway_change_alert <- v$pathway_change_alert + 1
+  #     }
+  #   } else {
+  #     v$allow_edge_draw <- FALSE
+  #     show("event_node_adding_panel")
+  #   }
+  #   
+  # })
+  # 
+  # #### adding new node ####
+  # observeEvent(input$add_node, {
+  #   
+  #   if(is.null(input$image_brush[1:4])) {
+  #     v$node_adding_error <- "Please specify node location"
+  #     delay(3000, v$node_adding_error <- NULL)
+  #   } else {
+  #     new_node_num <- as.character(max(as.integer(v$pathway$graph@nodes)) + 1)
+  #     v$pathway$graph <- graph::addNode(new_node_num, v$pathway$graph)
+  #     graph::nodeData(v$pathway$graph, new_node_num, attr = "label") <- input$event_node_name
+  #     graph::nodeData(v$pathway$graph, new_node_num, attr = "kegg.name") <- input$event_node_name
+  #     graph::nodeData(v$pathway$graph, new_node_num, attr = "data_source") <- input$node_source
+  #     graph::nodeData(v$pathway$graph, new_node_num, attr = "type") <- "bio_event"
+  #     graph::nodeData(v$pathway$graph, new_node_num, attr = "kegg.id") <- new_node_num
+  #     graph::nodeData(v$pathway$graph, new_node_num, attr = "kegg.gr.x") <- input$image_brush[[1]] + (input$image_brush[[2]] - input$image_brush[[1]])*0.5
+  #     graph::nodeData(v$pathway$graph, new_node_num, attr = "kegg.gr.y") <- input$image_brush[[3]] + (input$image_brush[[4]] - input$image_brush[[3]])*0.5
+  #     graph::nodeData(v$pathway$graph, new_node_num, attr = "kegg.gr.width") <- input$image_brush[[2]] - input$image_brush[[1]]
+  #     graph::nodeData(v$pathway$graph, new_node_num, attr = "kegg.gr.height") <- input$image_brush[[4]] - input$image_brush[[3]]
+  #     
+  #     print(v$selected_node_name[,"node_id"])
+  #     v$pathway$graph <- graph::addEdge(v$selected_node_name[,"node_id"], new_node_num, v$pathway$graph)
+  #     graph::edgeData(v$pathway$graph, v$selected_node_name[,"node_id"], new_node_num, attr = "data_source") <- input$node_source
+  #     graph::edgeData(v$pathway$graph, v$selected_node_name[,"node_id"], new_node_num, attr = "subtype1") <- "activation"
+  #     graph::edgeData(v$pathway$graph, v$selected_node_name[,"node_id"], new_node_num, attr = "subtype2") <- "indirect effect"
+  #     
+  #     v$pathway_change_alert <- v$pathway_change_alert + 1
+  #     hide('event_node_adding_panel')
+  #     v$allow_edge_draw <- TRUE
+  #     updateCheckboxInput(session, "event_node_mode", value = FALSE)
+  #   }
+  #   
+  #   if(!(input$event_node_name %in% v$event_node_type)) {
+  #     v$event_node_type <- unique(c(scan(file = "event_names.txt", what = "character", sep = "\t"), input$event_node_name))
+  #     write(v$event_node_type, file = "event_names.txt", sep = "\t")
+  #   }
+  #   
+  # })
   
   observeEvent(input$close_node_panel, {
     hide('event_node_adding_panel')
@@ -1457,63 +1864,141 @@ shinyServer(function(input, output, session) {
   #### make node as a transition node ####
   observeEvent(input$make_transition,{
     
-    graph::nodeData(v$pathway$graph, v$selected_node_name[,"node_id"], attr = "type") <- "transition_gene"
-    
-    graph::nodeData(v$pathway$graph, v$selected_node_name[,"node_id"], attr = "change_info") <- "class_change"
-    
-    graph::nodeData(v$pathway$graph, v$selected_node_name[,"node_id"], attr = "data_source") <- "image"
+    v$graphnel_df$node_table[v$selected_node_name[,"node_id"],"type"] <- "transition_gene"
+    v$graphnel_df$node_table[v$selected_node_name[,"node_id"],"change_info"] <- "class_change"
+    v$graphnel_df$node_table[v$selected_node_name[,"node_id"],"data_source"] <- "image"
     
     v$pathway_change_alert <- v$pathway_change_alert + 1
   })
   
+  ## continue from here
   #### delete node ####
   observeEvent(input$node_delete, {
     
-    index <- unique(which(v$graphical_data$edge_coords$from %in% v$selected_node_name[,"node_id"] | v$graphical_data$edge_coords$to %in% v$selected_node_name[,"node_id"]))
+    index <- unique(which(v$graphnel_df$edge_table$from %in% v$selected_node_name[,"node_id"] | v$graphnel_df$edge_table$to %in% v$selected_node_name[,"node_id"]))
     
-    from <- v$graphical_data$edge_coords$from[index]
-    to <- v$graphical_data$edge_coords$to[index]
-    
-    graph::edgeData(v$pathway$graph, from = from, to = to, attr = "existence") <- "removed"
-    
-    graph::nodeData(v$pathway$graph, n = v$selected_node_name[,"node_id"], attr = "existence") <- "removed"
+    v$graphnel_df$edge_table[index, "existence"] <- "removed"
+    v$graphnel_df$node_table[v$selected_node_name[,"node_id"], "existence"] <- "removed"
     
     v$pathway_change_alert <- v$pathway_change_alert + 1
   })
   
   
-  #### observer for saving pathway graph after any changies ####
+  ## will come to this later
+  #### undo redo observer ####
   observeEvent(v$pathway_change_alert, {
     if(v$pathway_change_alert != 0) {
-      v$pathway$sink.nodes <- psf::determine.sink.nodes(pathway_graph_processing(v$pathway))
+      if(length(v$undo_stack) > 10) {
+        v$undo_stack <- list(v$undo_stack, v$graphnel_df)[[-1]]
+      } else {
+        if(length(v$undo_stack) == 1) {
+          v$undo_stack <- list(v$undo_stack[[1]], v$graphnel_df)
+        } else {
+          v$undo_stack <- c(v$undo_stack, list(v$graphnel_df))
+        }
+      }
+      v$redo_stack <- NULL
+    }
+    # View(v$undo_stack)
+  }, suspended = F)
+  
+  observeEvent(input$undo, {
+    if(length(v$undo_stack) > 1) {
+      v$redo_stack <- c(v$redo_stack, list(v$undo_stack[[length(v$undo_stack)]]))
+      v$graphnel_df <- v$undo_stack[[length(v$undo_stack) - 1]]
+      v$undo_stack <- v$undo_stack[-length(v$undo_stack)]
+      v$undo_alert <- v$undo_alert + 1
+    }
+  })
+  
+  observeEvent(input$redo, {
+    if(!is.null(v$redo_stack)) {
+      if(length(v$redo_stack) > 0) {
+        v$graphnel_df <- v$redo_stack[[length(v$redo_stack)]]
+        v$undo_stack <- c(v$undo_stack, list(v$graphnel_df))
+        v$redo_stack <- v$redo_stack[-length(v$redo_stack)]
+        v$undo_alert <- v$undo_alert + 1
+      }
+    }
+  })
+  
+  #### observer for saving pathway graph after any changes ####
+  observeEvent(v$pathway_change_alert, {
+    if(v$pathway_change_alert != 0) {
       
-      v$pathway$order <-  psf::order.nodes(pathway_graph_processing(v$pathway)$graph)
+      removed_nodes <- v$graphnel_df$node_table[which(v$graphnel_df$node_table$existence == "removed"),]
+      removed_edges <- v$graphnel_df$edge_table[which(v$graphnel_df$edge_table$existence == "removed"),]
       
-      v$pathway$graph <- psf::set.edge.impacts(v$pathway$graph)
+      v$graphnel_df$edge_table <- v$graphnel_df$edge_table[which(v$graphnel_df$edge_table$existence != "removed"),]
+      v$graphnel_df$node_table <- v$graphnel_df$node_table[which(v$graphnel_df$node_table$existence != "removed"),]
       
-      v$graphical_data <- graphical_data_generator(v$pathway)
+      v$graphnel_df$node_table$sink <- FALSE
+      v$graphnel_df$node_table[unique(v$graphnel_df$edge_table$to[which(!(v$graphnel_df$edge_table$to %in% v$graphnel_df$edge_table$from))]), "sink"] <- TRUE
+      v$graphnel_df$node_table$color.background <- ifelse(v$graphnel_df$node_table$sink, "#0099cc", "#BFFFBF")
       
-      v$selected_node_name <- setNames(data.frame(matrix(ncol = 4, nrow = 0)), c("node_name", "gr_name", "node_id", "entrez_id"))
+      v$pathway[c("sink.nodes", "order", "graph")] <- df_to_graphnel(v$graphnel_df$node_table, v$graphnel_df$edge_table)[c("sink.nodes", "order", "graph")]
       
-      v$image_file <- kegg_node_mapper(group_graphics = v$pathway_data$group_graphics, kegg_pathway_graphics = v$graphical_data, pathway_name = v$pathway_name, pathway_image = v$pathway_image, show_changes = input$show_changes) %>%
+      v$pathway$graphnel_df <- v$graphnel_df
+      
+      v$pathway$removed_nodes <- rbind(v$pathway$removed_nodes, removed_nodes)
+      v$pathway$removed_edges <- rbind(v$pathway$removed_edges, removed_edges)
+      
+      v$selected_node_name <- setNames(data.frame(matrix(ncol = 3, nrow = 0)), c("node_id", "component_id_s", "label"))
+      
+      v$image_file <- plot_kegg_pathway(graphnel_df = v$graphnel_df, group_graphics = v$pathway$group_nodes, pathway_image = v$pathway_image,
+                                        node_colors = v$node_colors$node_colors, edge_mapping = FALSE, highlight_nodes = v$selected_node_name$node_id, highlight_color = "red",
+                                        col_legend_title = v$node_colors$col_legend_title, color_bar_lims = v$node_colors$color_bar_lims, present_node_modifications = input$show_modified_nodes, removed_nodes = v$pathway$removed_nodes) %>%
         image_write(tempfile(fileext='png'), format = 'png')
       
-      # saveRDS(v$pathway, file = paste0("edited_pathway_graphs/", v$pathway_name, ".RDS"))
+      saveRDS(v$pathway, file = paste0("collection_dir/pathways/", v$pathway_name, ".RDS"))
+      
+      updateRadioButtons(session, inputId = "pathway_source_selector", selected = 2)
     }
   }, suspended = F)
   
-  #### downlod handler for edited all pathways ####
-  output$download_pathway <- downloadHandler(
+  #### observer for saving pathway graph after undo or redo operations ####
+  observeEvent(v$undo_alert, {
+    if(v$undo_alert != 0) {
+      
+      removed_nodes <- v$graphnel_df$node_table[which(v$graphnel_df$node_table$existence == "removed"),]
+      removed_edges <- v$graphnel_df$edge_table[which(v$graphnel_df$edge_table$existence == "removed"),]
+      
+      v$graphnel_df$edge_table <- v$graphnel_df$edge_table[which(v$graphnel_df$edge_table$existence != "removed"),]
+      v$graphnel_df$node_table <- v$graphnel_df$node_table[which(v$graphnel_df$node_table$existence != "removed"),]
+      
+      v$graphnel_df$node_table$sink <- FALSE
+      v$graphnel_df$node_table[unique(v$graphnel_df$edge_table$to[which(!(v$graphnel_df$edge_table$to %in% v$graphnel_df$edge_table$from))]), "sink"] <- TRUE
+      v$graphnel_df$node_table$color.background <- ifelse(v$graphnel_df$node_table$sink, "#0099cc", "#BFFFBF")
+      
+      
+      v$pathway[c("sink.nodes", "order", "graph")] <- df_to_graphnel(v$graphnel_df$node_table, v$graphnel_df$edge_table)[c("sink.nodes", "order", "graph")] # v$pathway <- df_to_graphnel(v$graphnel_df$node_table, v$graphnel_df$edge_table)
+      
+      v$pathway$graphnel_df <- v$graphnel_df
+      
+      v$pathway$removed_nodes <- rbind(v$pathway$removed_nodes, removed_nodes)
+      v$pathway$removed_edges <- rbind(v$pathway$removed_edges, removed_edges)
+      
+      v$selected_node_name <- setNames(data.frame(matrix(ncol = 3, nrow = 0)), c("node_id", "component_id_s", "label"))
+      
+      v$image_file <- plot_kegg_pathway(graphnel_df = v$graphnel_df, group_graphics = v$pathway$group_nodes, pathway_image = v$pathway_image,
+                                        node_colors = v$node_colors$node_colors, edge_mapping = FALSE, highlight_nodes = v$selected_node_name$node_id, highlight_color = "red",
+                                        col_legend_title = v$node_colors$col_legend_title, color_bar_lims = v$node_colors$color_bar_lims, present_node_modifications = input$show_modified_nodes, removed_nodes = v$pathway$removed_nodes) %>%
+        image_write(tempfile(fileext='png'), format = 'png')
+      
+      
+      saveRDS(v$pathway, file = paste0("collection_dir/pathways/", v$pathway_name, ".RDS"))
+    }
+  }, suspended = F)
+  
+  #### download handler for edited all pathways ####
+  output$download_collection <- downloadHandler(
     filename = function(){
-      paste0(v$pathway_name, ".RData")
+      paste0("curated_collection", ".zip")
     },
     content = function(file) {
       
-      saved_graph <- v$pathway
-      saved_pathway_name <- v$pathway_name
-      saved_image <- v$pathway_image
+      zip(zipfile = file, files = "collection_dir")
       
-      save(saved_graph, saved_pathway_name, saved_image, file = file)
     }
   )
   
@@ -1540,11 +2025,7 @@ shinyServer(function(input, output, session) {
       
       v$entrez_fc <- v$exp_uploaded[,-1, drop = F]
       
-      # print(v$entrez_fc)
-      
-      # psf_signal_calculator_and_coloring(entrez_fc = v$entrez_fc, pathway = v$pathway, pathway_name = v$pathway_name, update_mod = FALSE)
-      
-      if(isTRUE(tryCatch( { psf_signal_calculator_and_coloring(entrez_fc = v$entrez_fc, pathway = v$pathway, pathway_name = v$pathway_name, update_mod = FALSE) }
+      if(isTRUE(tryCatch( { run_psf(entrez.fc = v$entrez_fc, kegg.collection = setNames(object = list(v$pathway), nm = v$pathway_name), calculate.significance = F, ncores = 4) }
                           , error = function(e1) {TRUE}))) {
         
         output$fc_table_load_error <- renderText({paste("<font color=\"#ff0000\"><b>", "Something is wrong with a file", "</b></font>")})
@@ -1553,8 +2034,18 @@ shinyServer(function(input, output, session) {
         
       } else {
         output$fc_table_load_error <- NULL
-        v$psf_and_colors <- psf_signal_calculator_and_coloring(entrez_fc = v$entrez_fc, pathway = v$pathway,
-                                                               pathway_name = v$pathway_name, update_mod = FALSE)
+        
+        v$pathway_psf <- run_psf(entrez.fc = v$entrez_fc, kegg.collection = setNames(object = list(v$pathway), nm = v$pathway_name), calculate.significance = F, ncores = 4)
+        
+        show('sample_selection_type_input')
+        
+        v$node_colors <- node_color_generator(pathway = v$pathway_psf[[v$pathway_name]], log_norm = input$log_norm_checkbox, sample_id = "mean", color_nodes = c("psf_activities", "fold_change")[as.integer(input$node_coloring_type)])
+        
+        v$image_file <- plot_kegg_pathway(graphnel_df = v$graphnel_df, group_graphics = v$pathway$group_nodes, pathway_image = v$pathway_image,
+                                          node_colors = v$node_colors$node_colors, edge_mapping = FALSE, edge_in_mode = FALSE, highlight_nodes = NULL, highlight_color = "red",
+                                          col_legend_title = v$node_colors$col_legend_title, color_bar_lims = v$node_colors$color_bar_lims, present_node_modifications = input$show_modified_nodes, removed_nodes = v$pathway$removed_nodes) %>%
+          image_write(tempfile(fileext='png'), format = 'png')
+        
         v$allow_graph_param_update <- TRUE
         
         updateSelectizeInput(session, "node_influence", 
@@ -1570,37 +2061,56 @@ shinyServer(function(input, output, session) {
     
   })
   
-  #### FC mapping ####
-  observeEvent(input$map_fc_values, {
+  #### psf calculation and sample data mapping ####
+  observeEvent(input$sample_selection_type, {
     
-    v$psf_and_colors <- psf_signal_calculator_and_coloring(entrez_fc = v$entrez_fc, pathway = v$pathway,
-                                                           pathway_name = v$pathway_name, update_mod = FALSE)
+    if(input$sample_selection_type == 1) {
+      
+      if(v$allow_graph_param_update) {
+        v$node_colors <- node_color_generator(pathway = v$pathway_psf[[v$pathway_name]], log_norm = input$log_norm_checkbox, sample_id = "mean", color_nodes = c("psf_activities", "fold_change")[as.integer(input$node_coloring_type)])
+        
+        v$image_file <- plot_kegg_pathway(graphnel_df = v$graphnel_df, group_graphics = v$pathway$group_nodes, pathway_image = v$pathway_image,
+                                          node_colors = v$node_colors$node_colors, edge_mapping = FALSE, edge_in_mode = FALSE, highlight_nodes = NULL, highlight_color = "red",
+                                          col_legend_title = v$node_colors$col_legend_title, color_bar_lims = v$node_colors$color_bar_lims, present_node_modifications = input$show_modified_nodes, removed_nodes = v$pathway$removed_nodes) %>%
+          image_write(tempfile(fileext='png'), format = 'png')
+        
+        hide('sample_selection_input')
+      }
+      
+    } else {
+      if(input$sample_selection_type == 2) {
+        updateSelectizeInput(session, "selected_sample", label = "Select sample", choices = colnames(v$entrez_fc), selected = colnames(v$entrez_fc)[1], server = T)
+        show('sample_selection_input')
+      }
+      ### will work on this later
+      if(input$sample_selection_type == 3) {
+        updateSelectizeInput(session, "selected_sample", label = "Select group", choices = "", selected = NULL, server = T)
+        show('sample_selection_input')
+      }
+    }
     
-    v$draw_color_bar <- TRUE
+  })
+  
+  
+  observeEvent(c(input$selected_sample, input$node_coloring_type, input$log_norm_checkbox), {
+    if(v$allow_graph_param_update) {
+      if(input$selected_sample %in% colnames(v$entrez_fc)) {
+        v$node_colors <- node_color_generator(pathway = v$pathway_psf[[v$pathway_name]], log_norm = input$log_norm_checkbox, sample_id = input$selected_sample, color_nodes = c("psf_activities", "fold_change")[as.integer(input$node_coloring_type)])
+        
+        v$image_file <- plot_kegg_pathway(graphnel_df = v$graphnel_df, group_graphics = v$pathway$group_nodes, pathway_image = v$pathway_image,
+                                          node_colors = v$node_colors$node_colors, edge_mapping = FALSE, edge_in_mode = FALSE, highlight_nodes = NULL, highlight_color = "red",
+                                          col_legend_title = v$node_colors$col_legend_title, color_bar_lims = v$node_colors$color_bar_lims, present_node_modifications = input$show_modified_nodes, removed_nodes = v$pathway$removed_nodes) %>%
+          image_write(tempfile(fileext='png'), format = 'png')
+      }
+    }
     
-    v$color_bar_lims <- range(v$psf_and_colors$exp_values)
-    
-    v$col_legend_title <- "log FC"
-    
-    v$color_bar_psf_mode <- TRUE
-    
-    v$image_file <- kegg_node_mapper(group_graphics = v$pathway_data$group_graphics, kegg_pathway_graphics = v$graphical_data, pathway_name = v$pathway_name, pathway_image = v$pathway_image, color.genes = v$psf_and_colors$exp_colors, color_bar_psf_mode = v$color_bar_psf_mode, col_legend_title = v$col_legend_title, color_bar_lims = v$color_bar_lims, draw_color_bar = v$draw_color_bar) %>% 
-      image_write(tempfile(fileext='png'), format = 'png')
-    
-    v$visnet_list <- visnet_creator(v$graphical_data, node_colors = v$psf_and_colors$exp_colors, col_legend_title = v$col_legend_title, color_bar_lims = v$color_bar_lims)
-    
-    v$pathway_exp_colored = TRUE
-    
-    v$pathway_psf_colored = FALSE
-    
-    v$mapping_value_type <- "FC"
   })
   
   #### node expression change observer ####
   observeEvent(input$change_exp, {
-    
-    updateNumericInput(session, "exp_slider", label = paste0(v$selected_node_name[,"gr_name"], " FC value"),
-                       value = round(unlist(unname(graph::nodeData(v$psf_and_colors$psf_graph[[1]][[v$pathway_name]]$graph, v$selected_node_name[,"node_id"],attr = "expression"))), digits = 3), 
+    print(v$selected_node_name[,"node_id"])
+    updateNumericInput(session, "exp_slider", label = paste0(v$selected_node_name[,"label"], " FC value"),
+                       value = v$pathway_psf[[v$pathway_name]]$exp_fc[v$selected_node_name[,"node_id"], input$selected_sample], 
                        min = 0, max = 10, step = 0.001)
     
     show('exp_change_panel')
@@ -1612,53 +2122,6 @@ shinyServer(function(input, output, session) {
     hide('exp_change_panel')
   })
   
-  #### PSF calculation and node coloring ####
-  observeEvent(input$psf_run, {
-    
-    v$psf_and_colors <- psf_signal_calculator_and_coloring(entrez_fc = v$entrez_fc, pathway = v$pathway,
-                                                           pathway_name = v$pathway_name, update_mod = FALSE)
-    
-    v$draw_color_bar <- TRUE
-    
-    v$color_bar_lims <- range(v$psf_and_colors$signal_values)
-    
-    v$col_legend_title <- "Signal log value"
-    
-    v$color_bar_psf_mode <- TRUE
-    
-    
-    v$image_file <- kegg_node_mapper(group_graphics = v$pathway_data$group_graphics, kegg_pathway_graphics = v$graphical_data, pathway_name = v$pathway_name, pathway_image = v$pathway_image, color.genes = v$psf_and_colors$psf_colors, color_bar_psf_mode = v$color_bar_psf_mode, col_legend_title = v$col_legend_title, color_bar_lims = v$color_bar_lims, draw_color_bar = v$draw_color_bar) %>%
-      image_write(tempfile(fileext='png'), format = 'png')
-    
-    ### temorarely commented boxplot of psf values
-    # sink_plot <- ggplot(v$psf_and_colors$sink_signals, aes(x=sink_name, y=signal, fill=signal)) +
-    #   geom_boxplot(color="black", lwd=0.2, outlier.shape=NA) +
-    #   geom_point(color = v$psf_and_colors$sink_signals$dot_color) +
-    #   geom_jitter(color = v$psf_and_colors$sink_signals$dot_color, width = 0.2) +
-    #   guides(fill=FALSE) +
-    #   coord_flip() +
-    #   theme_bw()
-    # 
-    # ggsave("sink_boxplot.png", plot = sink_plot, device = "png", path = NULL,
-    #        scale = 1, width = 400, height = magick::image_info(v$image_file)$height, units = "px",
-    #        dpi = 96, limitsize = TRUE)
-    # 
-    # gg_plot_img <- image_read('sink_boxplot.png')
-    # 
-    # file.remove('sink_boxplot.png')
-    #   
-    # image_append(c(v$image_file, gg_plot_img)) %>%
-    #   image_write(tempfile(fileext='png'), format = 'png')  
-    
-    v$visnet_list <- visnet_creator(v$graphical_data, node_colors = v$psf_and_colors$psf_colors, col_legend_title = v$col_legend_title, color_bar_lims = v$color_bar_lims)
-    
-    v$pathway_psf_colored = TRUE
-    
-    v$pathway_exp_colored = FALSE
-    
-    v$mapping_value_type <- "PSF"
-    
-  })
   
   #### PSF updater ####
   observeEvent(input$change_exp_submit, {
@@ -1802,29 +2265,428 @@ shinyServer(function(input, output, session) {
     
   }, deleteFile = TRUE)
   
-  observe({
-    v$visnet_list <- visnet_creator(v$graphical_data)
-  })
-  
   #### sink data plot rendering ####
   # output$sink_plot <- renderPlotly({
   #   v$sink_values_plot
   # })
-  
+
   
   #### visnet rendering ####
   output$visnet <- renderVisNetwork({
-    visNetwork(nodes = v$visnet_list$nodes, edges = v$visnet_list$edges, width = "100%", height = "800px") %>% 
+    visNetwork(nodes = vis_extract(v$graphnel_df, node_colors = v$node_colors)$node_table, edges = vis_extract(v$graphnel_df)$edge_table, width = "100%", height = "800px") %>% 
       visIgraphLayout(layout = "layout_nicely") %>% 
-      visInteraction(navigationButtons = TRUE, multiselect = T) %>%
+      visInteraction(navigationButtons = TRUE, multiselect = T, keyboard = F, selectConnectedEdges = T) %>%
+      visOptions(manipulation = list(enabled = TRUE, 
+                                     addNode = htmlwidgets::JS("function(data, callback) {
+                                                                callback(data);
+                                                                console.info('add_node')
+                                                                Shiny.onInputChange('add_node', {node_data : data});
+                                                                ;}"),
+                                     editNode = htmlwidgets::JS("function(data, callback) {
+                                                                callback(data);
+                                                                console.info('edit_node')
+                                                                Shiny.onInputChange('edit_node', {edit_node_data : data});
+                                                                ;}"),
+                                     # editEdge = htmlwidgets::JS("function(data, callback) {
+                                     #                            callback(data);
+                                     #                            console.info('vis_edit_edge')
+                                     #                            Shiny.onInputChange('vis_edit_edge', {edit_edge_data : data});
+                                     #                            ;}"),
+                                     editEdge = TRUE,
+                                     deleteNode = TRUE, initiallyActive = TRUE
+      )) %>%
       visExport() %>%
       visEvents(click = "function(nodes) {
                       console.info('click')
                       console.info(nodes)
                       Shiny.onInputChange('clicked_node', {nodes : nodes.nodes, edges : nodes.edges});
                       ;}"
+                      # , beforeDrawing = "function(ctx) {
+                      #       const image = document.getElementById('scream');
+                      #       const canvasWidth = ctx.canvas.width;
+                      #       const canvasHeight = ctx.canvas.height;
+                      #       
+                      #       var x = -image.width/2;
+                      #       var y = -image.height/2;
+                      # 
+                      #       ctx.drawImage(image, -1014, -1014);}"
       )
   })
+  
+  #### visnet editor ###
+  observeEvent(input$add_node, {
+
+    updateTextInput(session, inputId = "node_label", value = "")
+    updateTextInput(session, inputId = "node_genes", value = "")
+    updateSelectizeInput(session, inputId = "node_type", selected = "")
+    updateSelectizeInput(session, inputId = "node_function", selected = "mean")
+    updateNumericInput(session, inputId = "node_fc", value = 1)
+    
+    show('node_attrs')
+
+  })
+  
+  observeEvent(input$edit_node, {
+    
+    v$node_edit_mode <- TRUE
+    updateTextInput(session, inputId = "node_label", value = v$graphnel_df$node_table[unlist(input$clicked_node$nodes), "label"])
+    updateTextInput(session, inputId = "node_genes", value = v$graphnel_df$node_table[unlist(input$clicked_node$nodes), "component_id_s"])
+    updateSelectizeInput(session, inputId = "node_type", selected = v$graphnel_df$node_table[unlist(input$clicked_node$nodes), "type"])
+    updateSelectizeInput(session, inputId = "node_function", selected = v$graphnel_df$node_table[unlist(input$clicked_node$nodes), "psf_function"])
+    updateNumericInput(session, inputId = "node_fc", value = v$graphnel_df$node_table[unlist(input$clicked_node$nodes), "expression"])
+    updateNumericInput(session, inputId = "node_width", value = v$graphnel_df$node_table[unlist(input$clicked_node$nodes), "node_width"])
+    updateNumericInput(session, inputId = "node_height", value = v$graphnel_df$node_table[unlist(input$clicked_node$nodes), "node_height"])
+    
+    show('node_attrs')
+    
+  })
+  
+  
+  observeEvent(input$node_type, {
+    node_default_dims <- list(gene = c(46, 17), compound = c(8, 8), map = c(150, 35), linker = c(46, 17), event = c(150, 35))
+    if(input$node_type != "") {
+      updateNumericInput(session, inputId = "node_width", value = node_default_dims[[input$node_type]][1])
+      updateNumericInput(session, inputId = "node_height", value = node_default_dims[[input$node_type]][2])
+    }
+  })
+  
+  
+  observe({
+    invalidateLater(3000)
+    visNetworkProxy("visnet") %>%
+      visGetPositions()
+    if(!is.null(input$visnet_positions)) {
+      v$visnet_coord_ranges <- list(x = range(as.data.frame(do.call(rbind, input$visnet_positions))[,"x"]),
+                                    y = range(as.data.frame(do.call(rbind, input$visnet_positions))[,"y"]))
+    }
+  })
+  
+  observeEvent(input$close_node_attr_panel, {
+    hide('node_attrs')
+  })
+  
+  output$node_data_adding_error <- renderText({
+    paste("<font color=\"#ff0000\"><b>", v$node_data_adding_error_visnet, "</b></font>")
+  })
+  
+  observeEvent(input$submit_node_attrs, {
+    
+    if(input$node_label == "" | input$node_genes == "" | input$node_type == "") {
+      v$node_data_adding_error_visnet <- "Fill all necessary fields"
+      delay(3000, v$node_data_adding_error_visnet <- "")
+    } else {
+      if(v$node_edit_mode) {
+        v$graphnel_df$node_table[unlist(input$clicked_node$nodes), "label"] <- input$node_label
+        v$graphnel_df$node_table[unlist(input$clicked_node$nodes), "component_id_s"] <- input$node_genes
+        v$graphnel_df$node_table[unlist(input$clicked_node$nodes), "type"] <- input$node_type
+        v$graphnel_df$node_table[unlist(input$clicked_node$nodes), "psf_function"] <- input$node_function
+        v$graphnel_df$node_table[unlist(input$clicked_node$nodes), "expression"] <- input$node_fc
+        v$graphnel_df$node_table[unlist(input$clicked_node$nodes), "node_width"] <- input$node_width
+        v$graphnel_df$node_table[unlist(input$clicked_node$nodes), "node_height"] <- input$node_height
+        
+        v$pathway_change_alert <- v$pathway_change_alert + 1
+        v$node_edit_mode <- FALSE
+        hide('node_attrs')
+      } else {
+        ### when visnet editor is used update visnet data frame directly without rebuilding node and edge tables
+        node_ids <- as.integer(v$graphnel_df$node_table$node_id)
+        
+        ### continue here
+        x2 = (input$add_node$node_data$x - v$visnet_coord_ranges$x[1]) * (max(v$graphnel_df$node_table$x) - min(v$graphnel_df$node_table$x)) / (v$visnet_coord_ranges$x[2] - v$visnet_coord_ranges$x[1]) + min(v$graphnel_df$node_table$x)
+        
+        y2 = (input$add_node$node_data$y - v$visnet_coord_ranges$y[1]) * (max(v$graphnel_df$node_table$y) - min(v$graphnel_df$node_table$y)) / (v$visnet_coord_ranges$y[2] - v$visnet_coord_ranges$y[1]) + min(v$graphnel_df$node_table$y)
+        
+        new_node <- data.frame(
+          node_id = max(node_ids) + 1,
+          label = input$node_label,
+          component_id_s = input$node_genes,
+          type = input$node_type,
+          psf_function = input$node_function,
+          expression = input$node_fc,
+          signal = 1,
+          sink = F,
+          x_start = x2 - input$node_width*0.5,
+          y_start = y2 - input$node_height*0.5,
+          x_end  = x2 + input$node_width*0.5,
+          y_end =  y2 + input$node_height*0.5,
+          node_width = input$node_width,
+          node_height = input$node_height,
+          title = paste0(input$node_genes, "(", input$node_label, ")", "<br>", "Node id ", max(node_ids) + 1),
+          shape = ifelse(input$node_type == "compound", "dot", "box"),
+          color.background = "#BFFFBF",
+          color.border = "#BFFFBF",
+          borderWidth = 2,
+          font.size = 22,
+          size = ifelse(input$node_type == "compound", 10, 25),
+          font.color = "#000000",
+          vis_width = ifelse(input$node_type %in% c("map", "event"), input$node_width*2, NA),
+          x = x2, # input$add_node$node_data$x,
+          y = y2, # input$add_node$node_data$y,
+          existence = "added",
+          change_info = "no_change",
+          data_source = "",
+          row.names = max(node_ids) + 1,
+          stringsAsFactors = F
+        )
+        
+        v$graphnel_df$node_table <- rbind(v$graphnel_df$node_table,
+                                          new_node
+        )
+        
+        v$pathway_change_alert <- v$pathway_change_alert + 1
+        
+        # visNetworkProxy("visnet") %>%
+        #   visUpdateNodes(vis_extract(v$graphnel_df)$node_table)
+        
+        hide('node_attrs')
+      }
+    }
+  })
+  
+  
+  observeEvent(input$visnet_graphChange, {
+    
+    if(input$visnet_graphChange$cmd == "addEdge") {
+      
+      updateSelectizeInput(session, inputId = "edge_type", selected = "PPrel")
+      updateSelectizeInput(session, inputId = "subtype1_visnet", selected = "")
+      updateSelectizeInput(session, inputId = "subtype2_visnet", selected = "")
+      updateSelectizeInput(session, inputId = "interaction_source_visnetwork", selected = "image") 
+      updateNumericInput(session, inputId = "edge_wight", value = 1)
+      
+      show('edge_attrs')
+      
+    }
+    ### will work on it later
+    if(input$visnet_graphChange$cmd == "editEdge") {
+      
+      updateSelectizeInput(session, inputId = "edge_type", selected = v$graphnel_df$edge_table[input$visnet_graphChange$id, "type"])
+      updateSelectizeInput(session, inputId = "subtype1_visnet", selected = v$graphnel_df$edge_table[input$visnet_graphChange$id, "subtype1"])
+      updateSelectizeInput(session, inputId = "subtype2_visnet", selected = v$graphnel_df$edge_table[input$visnet_graphChange$id, "subtype2"])
+      updateSelectizeInput(session, inputId = "interaction_source_visnetwork", selected = v$graphnel_df$edge_table[input$visnet_graphChange$id, "data_source"])
+      updateNumericInput(session, inputId = "edge_wight", value = v$graphnel_df$edge_table[input$visnet_graphChange$id, "weight"])
+      updateActionButton(session, inputId = "submit_edge_attrs", label = "Edit edge")
+
+      show('edge_attrs')
+    }
+    
+    if(input$visnet_graphChange$cmd == "deleteElements") {
+      
+      if(length(unlist(input$visnet_graphChange$nodes)) > 0){
+        v$graphnel_df$node_table[unlist(input$visnet_graphChange$nodes), "existence"] <- "removed"
+      }
+      if(length(unlist(input$visnet_graphChange$edges)) > 0) {
+        v$graphnel_df$edge_table[unlist(input$visnet_graphChange$edges), "existence"] <- "removed"
+      }
+      v$pathway_change_alert <- v$pathway_change_alert + 1
+    }
+  })
+  
+  output$edge_data_adding_error <- renderText({
+    paste("<font color=\"#ff0000\"><b>", v$edge_adding_error_visnet, "</b></font>")
+  })
+  
+  #### visnet edit/add edge ####
+  observeEvent(input$submit_edge_attrs, {
+    if(input$subtype1_visnet == "" | is.null(input$interaction_source_visnetwork)) {
+      v$edge_adding_error_visnet <- "Fill all necessary fields"
+      delay(3000, v$edge_adding_error_visnet <- "")
+    } else {
+      new_edge_id <- paste0(input$visnet_graphChange$from, "|", input$visnet_graphChange$to)
+      
+      data_source <- input$interaction_source_visnetwork
+      # data_source[which(data_source == "database")] <- v$selected_interaction$source
+      data_source <- paste(data_source, collapse = ", ")
+      
+      if(input$visnet_graphChange$cmd == "editEdge") {
+        v$graphnel_df$edge_table[input$visnet_graphChange$id, "from"] <- input$visnet_graphChange$from
+        v$graphnel_df$edge_table[input$visnet_graphChange$id, "to"] <- input$visnet_graphChange$to
+        v$graphnel_df$edge_table[input$visnet_graphChange$id, "subtype1"] <-  input$subtype1_visnet
+        v$graphnel_df$edge_table[input$visnet_graphChange$id, "subtype2"] <-  input$subtype2_visnet
+        v$graphnel_df$edge_table[input$visnet_graphChange$id, "color"] <- line_col[input$subtype1_visnet]
+        v$graphnel_df$edge_table[input$visnet_graphChange$id, "arrows.to.type"] <- kegg_arrows_type[input$subtype1_visnet]
+        v$graphnel_df$edge_table[input$visnet_graphChange$id, "dashes"] <- input$subtype2_visnet == "indirect effect" | input$subtype1_visnet == "indirect effect"
+        v$graphnel_df$edge_table[input$visnet_graphChange$id, "change_info"] <-  "attr_change"
+        v$graphnel_df$edge_table[input$visnet_graphChange$id, "data_source"] <-  paste(input$interaction_source, collapse = ", ")
+        v$graphnel_df$edge_table[input$visnet_graphChange$id, "weight"] <- input$edge_wight
+      } else {
+        if(!(new_edge_id %in% rownames(v$graphnel_df$edge_table))) {
+          
+          new_edge <- data.frame(
+            id = new_edge_id,
+            from = input$visnet_graphChange$from,
+            to = input$visnet_graphChange$to,
+            color = line_col[input$subtype1_visnet],
+            arrows.to.enabled = TRUE,
+            arrows.to.type = kegg_arrows_type[input$subtype1_visnet],
+            label = "",
+            dashes = input$subtype1_visnet == "indirect effect" | input$subtype2_visnet == "indirect effect",
+            type = "",
+            subtype1 = input$subtype1_visnet,
+            subtype2 = input$subtype2_visnet,
+            state = "",
+            weight = input$edge_wight,
+            existence = "exist",
+            change_info = "added",
+            data_source = data_source,
+            row.names = new_edge_id
+          )
+          
+          v$graphnel_df$edge_table <- rbind(v$graphnel_df$edge_table, new_edge)
+        }
+      }
+      
+      v$pathway_change_alert <- v$pathway_change_alert + 1
+      hide("edge_attrs")
+      updateActionButton(session, inputId = "submit_edge_attrs", label = "Save")
+    }
+  })
+  
+  observeEvent(input$close_edge_attr_panel, {
+    hide("edge_attrs")
+  })
+  
+  
+  #### undernetwork tables ####
+  observe({
+    output$network_node_table <- renderDataTable({
+      datatable(
+        v$graphnel_df$node_table,          
+        escape=FALSE,
+        # filter = 'top',
+        # class = "cell-border",
+        editable = TRUE,
+        class   = 'cell-border compact hover',
+        selection = list(mode = "none", target = 'row'),
+        options = list(searchHighlight = TRUE,
+                       order = list(0, 'asc'),
+                       pageLength = 100,
+                       autoWidth  = T,
+                       columnDefs = list(list(
+                         targets  = c(c(1:9), 15),
+                         render   = JS(
+                           "function(data, type, row, meta) {",
+                           "return type === 'display' && data.length > 10 ?",                                    "'<span title=\"' + data + '\">' +
+                                data.substr(0, 10) + '...</span>' : data;", "}"))),
+                       initComplete = JS("function(settings, json) {",
+                                         "$(this.api().table().header()).css({'background-color': '#3474B7', 'color': '#fff'});",
+                                         "}"),
+                       scrollY = 200,scrollX = TRUE
+        ),
+        style = 'bootstrap'
+      )
+    })
+    
+    network_node_proxy <- dataTableProxy('network_node_table', deferUntilFlush = FALSE)
+    
+    # observeEvent(input$network_node_table_cell_edit, {
+    #   if(!is.null(v$node_network_table_filtered)) {
+    #     node_ind <- which(v$node_table$name == v$node_network_table_filtered$name[input$network_node_table_cell_edit$row])
+    #     new_network_node_row <- v$node_table[node_ind,]
+    #   } else {
+    #     node_ind <- which(v$node_table$name == v$node_network_table$name[input$network_node_table_cell_edit$row])
+    #     new_network_node_row <- v$node_table[node_ind,]
+    #   }
+    #   
+    #   new_network_node_row[10] <- input$network_node_table_cell_edit$value
+    #   new_network_node_row[8] <- USER$User
+    #   new_network_node_row <- as.character(new_network_node_row[-2])
+    #   
+    #   if(input$network_node_table_cell_edit$col == 10) {
+    #     # new_network_node_row[8] <- as.character(Sys.time())
+    #     node_curating_function(v$node_table, v$edge_table, new_network_node_row, TRUE, node_ind)
+    #   }
+    #   
+    # })
+    
+    output$network_edge_table <- renderDataTable({
+      datatable(
+        v$graphnel_df$edge_table, 
+        escape=FALSE,
+        # filter = 'top',
+        class = "cell-border",
+        selection = list(mode = "none", target = 'row'),
+        editable = TRUE,
+        options = list(searchHighlight = TRUE,
+                       # order = list(13, 'desc'),
+                       pageLength = 100,
+                       autoWidth  = T,
+                       # columnDefs = list(list(
+                       #   targets  = c(1:6),
+                       #   render   = JS(
+                       #     "function(data, type, row, meta) {",
+                       #     "return type === 'display' && data.length > 10 ?",                                    "'<span title=\"' + data + '\">' +
+                       #          data.substr(0, 10) + '...</span>' : data;", "}"))),
+                       initComplete = JS("function(settings, json) {",
+                                         "$(this.api().table().header()).css({'background-color': '#3474B7', 'color': '#fff'});",
+                                         "}"),
+                       scrollY = 200,scrollX = TRUE
+        ),
+        style = 'bootstrap'
+      )
+    })
+    
+    network_edge_proxy <- dataTableProxy('network_edge_table', deferUntilFlush = FALSE)
+    
+    # observeEvent(input$network_edge_table_cell_edit, {
+    #   if(!is.null(v$edge_network_table_filtered)) {
+    #     edge_ind <- which(v$edge_table$source == v$edge_network_table_filtered$source[input$network_edge_table_cell_edit$row] & v$edge_table$target == v$edge_network_table_filtered$target[input$network_edge_table_cell_edit$row])
+    #     new_network_edge_row <- v$edge_table[edge_ind,]
+    #   } else {
+    #     edge_ind <- which(v$edge_table$source == v$edge_network_table$source[input$network_edge_table_cell_edit$row] & v$edge_table$target == v$edge_network_table$target[input$network_edge_table_cell_edit$row])
+    #     new_network_edge_row <- v$edge_table[edge_ind,]
+    #   }
+    #   
+    #   new_network_edge_row[14] <- input$network_edge_table_cell_edit$value
+    #   new_network_edge_row[12] <- USER$User
+    #   new_network_edge_row <- as.character(new_network_edge_row)
+    #   
+    #   if(input$network_edge_table_cell_edit$col == 14) {
+    #     # new_network_edge_row[13] <- as.character(Sys.time())
+    #     # edge_curating_function(v$edge_table, v$node_table, edge_row, edit_mode, row_ind, user)
+    #     edge_curating_function(v$edge_table, v$node_table, new_network_edge_row, TRUE, edge_ind)
+    #   }
+    #   
+    # })
+    
+    observe({
+      if(!is.null(unlist(input$clicked_node$edges))) {
+        # visNetworkProxy("visnet") %>%
+        #   visGetEdges(input = "edge_list")
+        
+        # edge_matrix <- unlist(sapply(unlist(input$clicked_node$edges), function(x) {
+        #   c(input$edge_list[[x]]$from, input$edge_list[[x]]$to)
+        # }))
+        
+        # edge_matrix[1,] <- as.character(v$visnet_list$edges[edge_matrix[1,],1])
+        # edge_matrix[2,] <- as.character(v$visnet_list$edges[edge_matrix[2,],2])
+        
+        
+        v$edge_network_table_filtered <- v$graphnel_df$edge_table[unlist(input$clicked_node$edges),]
+        replaceData(network_edge_proxy, v$edge_network_table_filtered, resetPaging = FALSE)
+        
+        # if(!is.null(edge_matrix)) {
+        #   v$edge_network_table_filtered <- v$edge_network_table[which(v$edge_network_table$from %in% edge_matrix[1,] & v$edge_network_table$to %in% edge_matrix[2,]),]
+        #   replaceData(network_edge_proxy, v$edge_network_table_filtered, resetPaging = FALSE)
+        # }
+      } else {
+        replaceData(network_edge_proxy, v$graphnel_df$edge_table, resetPaging = FALSE)
+        v$edge_network_table_filtered <- NULL
+      } 
+    })
+    
+    observe({
+      if(!is.null(unlist(input$clicked_node$nodes))) {
+        v$node_network_table_filtered <- v$graphnel_df$node_table[unlist(input$clicked_node$nodes),] # v$node_network_table[which(v$node_network_table$node_id %in% selected_nods),]
+        replaceData(network_node_proxy, v$node_network_table_filtered, resetPaging = FALSE)
+      } else {
+        replaceData(network_node_proxy, v$graphnel_df$node_table, resetPaging = FALSE)
+        v$node_network_table_filtered <- NULL
+      }
+    })
+    
+  })
+  
   
   #### partial influence node detection by network node click ####
   observeEvent(input$get_partial_influence, {
@@ -1854,16 +2716,16 @@ shinyServer(function(input, output, session) {
     
   })
   
-  observeEvent(input$influence_type, {
-    if(input$influence_type == "None") {
-      v$visnet_list$nodes <- visnet_creator(v$graphical_data, node_colors = v$psf_and_colors$psf_colors, col_legend_title = v$col_legend_title, color_bar_lims = v$color_bar_lims)$nodes
-      # v$visnet_list$nodes$label <- unlist(strsplit(v$visnet_list$nodes$label, split = "\n"))[length(unlist(strsplit(v$visnet_list$nodes$label, split = "\n")))]
-    }
-  })
+  # observeEvent(input$influence_type, {
+  #   if(input$influence_type == "None") {
+  #     v$visnet_list$nodes <- visnet_creator(v$graphical_data, node_colors = v$psf_and_colors$psf_colors, col_legend_title = v$col_legend_title, color_bar_lims = v$color_bar_lims)$nodes
+  #     # v$visnet_list$nodes$label <- unlist(strsplit(v$visnet_list$nodes$label, split = "\n"))[length(unlist(strsplit(v$visnet_list$nodes$label, split = "\n")))]
+  #   }
+  # })
   
   #### visnet search ####
   observeEvent(input$search_go, {
-    id <- v$graphical_data$node_coords$node_id[grep(input$network_search, v$graphical_data$node_coords$gr_name, ignore.case = T)]
+    id <- v$graphnel_df$node_table$node_id[grep(input$network_search, v$graphnel_df$node_table$title, ignore.case = T)]
     if(length(id) > 0) {
       visNetworkProxy("visnet") %>%
         visFocus(id = id[1], scale = 2)

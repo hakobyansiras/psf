@@ -1,9 +1,11 @@
 library(shiny)
+library(DT)
 library(shinyWidgets)
 library(shinyjs)
 library(visNetwork)
 library("shinycssloaders")
 library(plotly)
+library(shinycssloaders)
 
 load("subtypes.RData")
 
@@ -111,14 +113,6 @@ shinyUI(
     #                         Shiny.onInputChange("scroll_test", e.deltaY);
     # };'))
     
-    #### psf steps visualization key "→" ####
-    # tags$script('
-    #   $(document).on("keydown", function (e) {
-    #     if(e.which == 39) {
-    #         Shiny.onInputChange("psf_higlight", Math.random());
-    #     }
-    #   });
-    # '),
     
     #### right click dialog prevention script ####
     tags$head(tags$script('document.addEventListener("contextmenu", function(e) {
@@ -167,6 +161,7 @@ shinyUI(
               div(id = "dir_switch", actionButton("edge_direction_switch", "Reverse edge direction", style='text-align: left; width: 148px; border-style: none; padding:4px; border-radius: 0px;')),
               div(id = "edge_search_dialog", actionButton("edge_search_dialog", "Search edge", style='text-align: left; width: 148px; border-style: none; padding:4px; border-radius: 0px;')),
               div(id = "add_edge_button", actionButton("add_edge", "Add edge", style = 'text-align: left; width: 148px; border-style: none; padding:4px; border-radius: 0px;')),
+              div(id = "connect_to_button", actionButton("connect_to", "Connect to", style = 'text-align: left; width: 148px; border-style: none; padding:4px; border-radius: 0px;')),
               div(id = "event_association", actionButton("associate_with_event_node", "Associate with event", style = 'text-align: left; width: 148px; border-style: none; padding:4px; border-radius: 0px;')),
               div(id = "transition_maker_button", actionButton("make_transition", "Switch to transition node", style = 'text-align: left; width: 148px; border-style: none; padding:4px; border-radius: 0px;')),
               div(id = "edge_delete_button", actionButton("edge_delete", "Remove edge", style='text-align: left; width: 148px; border-style: none; padding:4px; border-radius: 0px;')),
@@ -183,90 +178,133 @@ shinyUI(
     
     column(2, 
            fixedPanel(
-             titlePanel(span("KEGG interactive", style = "color:#1f992f"), windowTitle = "KEGG interactive"),
+             titlePanel(span("PSF toolkit", style = "color:#1f992f"), windowTitle = "PSF toolkit"),
              wellPanel(
-             br(),
-             style="background-color: #f2f2f2; height: 600px; width: 250px;",
+             style="background-color: #f2f2f2; height: 900px; width: 250px;",
              
-             div(style="display: inline-block;vertical-align:top;",
-                 dropdown(label = "Load pathway",
-                          div(style="display: inline-block;vertical-align:top; width: 210px;", selectizeInput("selected_pathway", label = "Load from kegg", choices = "Chemokine_signaling_pathway", selected = "Chemokine_signaling_pathway")),
-                          actionButton("load_pathway", label = "Load"),
-                          div(style="display: inline-block;vertical-align:top;", fileInput("kegg_data", label = "Load from RData file"))
-                 )
+             div(style="display: inline-block;vertical-align:top; width: 210px;", htmlOutput('pathway_name_and_source')),
+             div(style="display: inline-block;vertical-align:top; width: 210px;", tags$hr(style="border-color: #1f992f;")),
+             
+             tabsetPanel(id = "app_mode",
+               tabPanel(title = "Curation", 
+                        div(style="display: inline-block;vertical-align:top;",
+                            br(),
+                            useShinyjs(),
+                            div(style="display: inline-block;vertical-align:top; width: 210px;", selectizeInput("pathway_source", label = "Pathway source", choices = c("Pathway collection", "DF", "Editor"), selected = "Pathway collection")),
+                            div(id = "collection_loader", style="display: inline-block;vertical-align:top; width: 210px;", fileInput("load_collection", label = "Load collection", accept = ".zip")),
+                            # htmlOutput('pathway_loading_error_text'),
+                            div(id = "pathway_name_selector", style="display: inline-block;vertical-align:top; width: 210px;", selectizeInput("selected_pathway", label = "Add from kegg", choices = "", selected = "")),
+                            div(id = "pathway_source_radio", radioButtons("pathway_source_selector", label = NULL, choices = list("KEGG" = 1, "Local" = 2), selected = 2, inline = T)),
+                            actionButton("load_pathway", label = "Load")
+                            
+                        ),
+                        
+                        br(),
+                        tags$hr(style="border-color: #1f992f;"),
+                        
+                        div(style="display: inline-block;vertical-align:top; width: 210px;",
+                            dropdown(label = "Network editing",
+                                     # div(style="display: inline-block;vertical-align:top;", actionButton("save", "Save work")),
+                                     div(style="display: inline-block;vertical-align:top;", actionButton("draw_edge", "Draw_edge")),
+                                     div(style="display: inline-block;vertical-align:top;", actionButton("check_disconnected_nodes", "Highlight disconnected node(s)")),
+                                     div(style="display: inline-block;vertical-align:top;", actionButton("check_duplicated_nodes", "Highlight duplicated nodes"))
+                            )
+                        ),
+                        
+                        div(downloadButton("download_collection", label = "Download collection", style='display: block; margin: auto;')),
+                        # div(style="display: inline-block;vertical-align:top; width: 210px;",
+                        #     dropdown(label = "Download",
+                        #              div(downloadButton("download_table", label = "Download pathway", style='display: block; margin: auto;')),
+                        #              div(downloadButton("download_pathway", label = "Save pathway", style='display: block; margin: auto;'))
+                        #     )
+                        # ),
+                        
+                        div(style="display: inline-block;vertical-align:top; width: 210px;",
+                            dropdown(label = "Presenting modes",
+                                     div(style="display: inline-block;vertical-align:top;width: 130px;", checkboxInput("show_changes", label = "Show changes", value = FALSE)),
+                                     div(style="display: inline-block;vertical-align:top;width: 130px;", checkboxInput("show_modified_nodes", label = "Show node changes", value = FALSE))
+                            )
+                        ),
+                        div(style="display: inline-block;vertical-align:top; width: 210px;",
+                            actionButton("undo", label = NULL, icon("undo", verify_fa = FALSE)),
+                            actionButton("redo", label = NULL, icon("redo", verify_fa = FALSE))
+                        )
+                        # div(style="display: inline-block;vertical-align:top;", checkboxInput("ingoing_edge", "Edge in", width = "148px")),
+                        # div(style="display: inline-block;vertical-align:top;", uiOutput("edge_search")) 
+                        
+                        ),
+               tabPanel("Vis", 
+                        br(),
+                        div(style="display: inline-block;vertical-align:top; width: 210px;",
+                            # dropdown(label = "Upload exp",
+                            div(style="display: inline-block;vertical-align:top;", fileInput("file", label = NULL, placeholder = "Exp matrix"))
+                            # )
+                        ),
+                        useShinyjs(),
+                        hidden(
+                          div(id = "sample_selection_type_input", style="display: inline-block;vertical-align:top; width: 210px;",
+                              radioButtons("sample_selection_type", label = NULL, choices = list("All" = 1, "Sample" = 2, "Group" = 3), selected = 1, inline = T)
+                          ),
+                          div(id = "sample_selection_input", style="display: inline-block;vertical-align:top; width: 210px;",
+                              selectizeInput("selected_sample", label = "Select sample", choices = "")
+                          )
+                        ),
+                        hidden(
+                          div(id = "vis_buttons",
+                              div(style="display: inline-block;vertical-align:top; width: 210px;",
+                                  div(style="display: inline-block; vertical-align:top; width: 60px; top: 20px", checkboxInput("log_norm_checkbox", label = "Log", value = TRUE)),
+                                  div(style="display: inline-block; vertical-align:top;", radioButtons("node_coloring_type", label = "Select mapping value", choices = list("PSF" = 1, "FC" = 2), selected = 1, inline = T))
+                              ),
+                              # div(style="display: inline-block;vertical-align:top; width: 210px;",
+                              #     actionButton("map_fc_values", label = "Map FC values")
+                              # ),
+                              # div(style="display: inline-block;vertical-align:top; width: 210px;",
+                              #     actionButton("psf_run", label = "Calculate psf")
+                              # ),
+                              # div(style="display: inline-block;vertical-align:top; width: 210px;",
+                              #     selectizeInput("node_influence", label = "Node partial influence", choices = "", selected = NULL)
+                              # ),
+                              #### will work on this part ####
+                              # div(style="display: inline-block;vertical-align:top; width: 210px;",
+                              #     actionButton("reset_changed_values", label = "Reset modifications")
+                              # ),
+                              div(style="display: inline-block;vertical-align:top; width: 230px;",
+                                  dropdown(label = "Partial influence analysis",
+                                           div(style="display: inline-block;vertical-align:top;", selectizeInput("influence_type", label = "Influence type", choices = c("None", "any", "+", "-"), selected = "None")),
+                                           div(style="display: inline-block;vertical-align:top;", selectizeInput("influence_node_num", label = "Number of nodes", choices = c(1:5, "all"), selected = "1")),
+                                           div(style="display: inline-block;vertical-align:top;", actionButton("get_partial_influence", label = "Highlight part inf. nodes"),
+                                               htmlOutput('partial_inf_err')
+                                           )
+                                  )
+                              )
+                              # div(style="display: inline-block;vertical-align:top; width: 210px;",
+                              #     downloadButton("download_signal_table", label = "Download signal table", style='display: block; margin: auto;')
+                              # )
+                          )
+                        ),
+                        
+                        htmlOutput('fc_table_load_error')
+                        )
              ),
+             
+             
              # div(style="display: inline-block;vertical-align:top; width: 210px;",
              #     dropdown(label = "Load from file",
              #              div(style="display: inline-block;vertical-align:top;", fileInput("kegg_data", label = h3("Load RData file")))
              #     )
              # ),
-             br(),
-             div(style="display: inline-block;vertical-align:top; width: 210px;", 
-                 selectizeInput("app_mode", label = "App mode", choices = c("Curation", "Vis"), selected = "Curation")
-                 ),
+             
+             # div(style="display: inline-block;vertical-align:top; width: 210px;", 
+             #     selectizeInput("app_mode", label = "App mode", choices = c("Curation", "Vis"), selected = "Curation")
+             #     ),
              
              conditionalPanel(
                condition = "input.app_mode == 'Curation'",
-               div(style="display: inline-block;vertical-align:top; width: 210px;",
-                   dropdown(label = "Network editing",
-                            # div(style="display: inline-block;vertical-align:top;", actionButton("save", "Save work")),
-                            div(style="display: inline-block;vertical-align:top;", actionButton("draw_edge", "Draw_edge")),
-                            div(style="display: inline-block;vertical-align:top;", actionButton("check_disconnected_nodes", "Highlight disconnected node(s)"))
-                            )
-               ),
-               div(style="display: inline-block;vertical-align:top; width: 210px;",
-                   dropdown(label = "Download",
-                            div(downloadButton("download_table", label = "Download pathway", style='display: block; margin: auto;')),
-                            div(downloadButton("download_pathway", label = "Save pathway", style='display: block; margin: auto;'))
-                   )
-               ),
-               # div(style="display: inline-block;vertical-align:top;width: 80px;", checkboxInput("psf_mode", label = "PSF test", value = FALSE)),
-               div(style="display: inline-block;vertical-align:top; width: 210px;",
-                   dropdown(label = "Presenting modes",
-                            div(style="display: inline-block;vertical-align:top;width: 130px;", checkboxInput("show_changes", label = "Show changes", value = FALSE))
-                   )
-               )
-               # div(style="display: inline-block;vertical-align:top;", checkboxInput("ingoing_edge", "Edge in", width = "148px")),
-               # div(style="display: inline-block;vertical-align:top;", uiOutput("edge_search")) 
+               
              ),
              conditionalPanel(
                condition = "input.app_mode == 'Vis'",
-               div(style="display: inline-block;vertical-align:top; width: 230px;",
-                   dropdown(label = "Upload exp",
-                            div(style="display: inline-block;vertical-align:top;", fileInput("file", label = h3("Expression matrix input")))
-                   )
-               ),
-               useShinyjs(),
-               hidden(
-                 div(id = "vis_buttons",
-                     div(style="display: inline-block;vertical-align:top; width: 210px;",
-                         actionButton("map_fc_values", label = "Map FC values")
-                     ),
-                     div(style="display: inline-block;vertical-align:top; width: 210px;",
-                         actionButton("psf_run", label = "Calculate psf")
-                     ),
-                     # div(style="display: inline-block;vertical-align:top; width: 210px;",
-                     #     selectizeInput("node_influence", label = "Node partial influence", choices = "", selected = NULL)
-                     # ),
-                     div(style="display: inline-block;vertical-align:top; width: 210px;",
-                         actionButton("reset_changed_values", label = "Reset modifications")
-                     ),
-                     div(style="display: inline-block;vertical-align:top; width: 230px;",
-                         dropdown(label = "Partial influence analysis",
-                                  div(style="display: inline-block;vertical-align:top;", selectizeInput("influence_type", label = "Influence type", choices = c("None", "any", "+", "-"), selected = "None")),
-                                  div(style="display: inline-block;vertical-align:top;", selectizeInput("influence_node_num", label = "Number of nodes", choices = c(1:5, "all"), selected = "1")),
-                                  div(style="display: inline-block;vertical-align:top;", actionButton("get_partial_influence", label = "Highlight part inf. nodes"),
-                                  htmlOutput('partial_inf_err')
-                                  )
-                         )
-                     )
-                     # div(style="display: inline-block;vertical-align:top; width: 210px;",
-                     #     downloadButton("download_signal_table", label = "Download signal table", style='display: block; margin: auto;')
-                     # )
-                 )
-               ),
                
-               htmlOutput('fc_table_load_error')
              )
              
            )
@@ -314,18 +352,20 @@ shinyUI(
                      cursor = "auto",
                      class = "panel panel-default",
                      actionButton("close_panel", "X", style='position: absolute; right: 8px; top: 8px; text-align: center; width: 18px; height 15px; border-style: solid; border-radius: 10px; background-color: rgb(255, 0, 0, 0.9); font-size: 80%; padding: 0px; align :'),
+                     hidden(div(id = "node_selecion_message", style = 'padding-left: 8px; padding-top: 8px;', HTML('<p style="font-size: 16px; color: #669900;"><b>Select nodes to connect with.</b></p>'))),
                      div(style = 'padding-left: 8px; padding-top: 8px;', htmlOutput('edge_adding_error')),
                      hidden(div(id = "image_edge_direction_switch", style = 'position: absolute; left: 255px; top: 8px; width: 50px;', prettySwitch(inputId = "image_edge_direction", label = "In", value = TRUE))),
                      div(style = "padding-right: 10px; padding-left: 10px; padding-top: 10px;",
                          fluidRow(
-                           column(6, div(selectizeInput("type", label = "Edge Type*", choices = edge_subtype1, selected = ""))),
+                           column(6, div(selectizeInput("subtype1", label = "Edge subtype1*", choices = edge_subtype1, selected = ""))),
                            column(6, div(style="position:absolute; top: 32px; left: 30px; outline: 1px solid; outline-offset: 5px;", htmlOutput("edge_info")))
                          )
                      ),
                      div(style = "padding-right: 10px; padding-left: 10px;",
                          fluidRow(
-                           column(6, div(selectizeInput("subtype", label = "Subtype", choices = c("activation", "binding/association", "compound", "dephosphorylation", "dissociation", "expression", "glycosylation", "indirect effect", "inhibition", "phosphorylation", "reaction", "repression", "state change", "ubiquitination", ""), selected = ""))),
-                           column(6, div(selectizeInput("interaction_source", "Edge source*", choices = c("image", "database", "literature", ""), selected = "", multiple = TRUE)))
+                           column(6, div(selectizeInput("subtype2", label = "Edge subtype2", choices = c("activation", "binding/association", "compound", "dephosphorylation", "dissociation", "expression", "glycosylation", "indirect effect", "inhibition", "phosphorylation", "reaction", "repression", "state change", "ubiquitination", ""), selected = ""))),
+                           column(6, div(selectizeInput("interaction_source", "Edge source*", choices = c("image", "database", "literature", ""), selected = "", multiple = TRUE))),
+                           column(6, div(numericInput("", "Edge weight*", value = 1, min = 0, max = 1)))
                          )
                      ),
                      fluidRow(
@@ -404,8 +444,8 @@ shinyUI(
                )
              ),
              
-             tabsetPanel(
-               tabPanel(title='KEGG',useShinyjs(),
+             tabsetPanel(id = "net_vis_panels",
+               tabPanel(title='KEGG', value = 1, useShinyjs(),
                         div(id = "image",
                             # style="height:580px; overflow-y: scroll; overflow-x: scroll;",
                             htmlOutput('pathway_load_error')),
@@ -417,10 +457,74 @@ shinyUI(
                         # plotlyOutput("sink_plot", inline = TRUE)
                         
                ),
-               tabPanel(title='VisNet', 
+               tabPanel(title='VisNet', value = 2,
                         div(style="display: inline-block;vertical-align:top; width: 150px; margin-top: 1px;", textInput("network_search", label = NULL, placeholder = "Gene, chemical ...")),
                         div(style="display: inline-block;vertical-align:top; width: 150px; margin-top: 1px;", actionButton("search_go", label = "Search", icon = icon("search", lib = "glyphicon"))),
-                        visNetworkOutput("visnet", height = "800px"))
+                        
+                        # includeHTML("static.html"),
+                        
+                        visNetworkOutput("visnet", height = "800px"),
+                        
+                        # div(style="background-image: url('http://rest.kegg.jp/get/hsa04062/image')", 
+                        #     visNetworkOutput("visnet", height = "800px")
+                        # ),
+                        useShinyjs(),
+                        hidden(
+                          div(id = "node_attrs",
+                              absolutePanel(
+                                top = 500, right = 500,
+                                width = 300,
+                                draggable = TRUE,
+                                fixed = TRUE,
+                                cursor = "auto",
+                                wellPanel(
+                                  style = "background-color: rgb(217, 217, 217, 0.8); z-index:2000;",
+                                  actionButton("close_node_attr_panel", "X", style='position: absolute; right: 8px; top: 8px; text-align: center; width: 18px; height 15px; border-style: solid; border-radius: 10px; background-color: rgb(255, 0, 0, 0.9); font-size: 80%; padding: 0px; align :'),
+                                  textInput("node_label", label = "Node name*"),
+                                  textInput("node_genes", label = "Node ids*"),
+                                  selectizeInput("node_type", label = "Node type*", choices = c("gene", "compound", "map", "linker", "event", ""), selected = ""),
+                                  selectizeInput("node_function", label = "Node psf function", choices = c("mean", "min", "max", "sum"), selected = "mean"),
+                                  numericInput("node_width", label = "Node width", value = 46),
+                                  numericInput("node_height", label = "Node height", value = 17),
+                                  numericInput("node_fc", label = "Node fold change", value = 1),
+                                  div(style = 'padding-left: 8px; padding-top: 8px;', htmlOutput('node_data_adding_error')),
+                                  actionButton("submit_node_attrs", label = "Save")
+                                )
+                              )
+                          )
+                        ),
+                        
+                        useShinyjs(),
+                        hidden(
+                          div(id = "edge_attrs",
+                              absolutePanel(
+                                top = 500, right = 500,
+                                width = 300,
+                                draggable = TRUE,
+                                fixed = TRUE,
+                                cursor = "auto",
+                                wellPanel(
+                                  style = "background-color: rgb(217, 217, 217, 0.8); z-index:2000;",
+                                  actionButton("close_edge_attr_panel", "X", style='position: absolute; right: 8px; top: 8px; text-align: center; width: 18px; height 15px; border-style: solid; border-radius: 10px; background-color: rgb(255, 0, 0, 0.9); font-size: 80%; padding: 0px; align :'),
+                                  selectizeInput("edge_type", label = "Edge type", choices = c("ECrel", "GErel", "PCrel", "PPrel"), selected = "PPrel"),
+                                  selectizeInput("subtype1_visnet", label = "Subtype 1*", choices = c("activation", "binding/association", "compound", "dephosphorylation", "dissociation", "expression", "glycosylation", "indirect effect", "inhibition", "phosphorylation", "reaction", "repression", "state change", "ubiquitination", ""), selected = ""),
+                                  selectizeInput("subtype2_visnet", label = "Subtype 2", choices = edge_subtype1, selected = ""),
+                                  selectizeInput("interaction_source_visnetwork", "Edge source*", choices = c("image", "database", "literature", ""), selected = "image", multiple = TRUE),
+                                  numericInput("edge_wight", label = "Edge weight", value = 1),
+                                  div(style = 'padding-left: 8px; padding-top: 8px;', htmlOutput('edge_data_adding_error')),
+                                  actionButton("submit_edge_attrs", label = "Save")
+                                )
+                              )
+                          )
+                        ),
+                        
+                        tabsetPanel(id = "undernetwork_tables", 
+                                    tabPanel(title = "Node table",
+                                             dataTableOutput("network_node_table", height = "200px", width = "100%")),
+                                    tabPanel(title = "Edge table",
+                                             dataTableOutput("network_edge_table", height = "200px", width = "100%"))
+                        )
+                        )
              )
            )
            )
