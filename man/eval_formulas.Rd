@@ -23,7 +23,7 @@ eval_formulas(
 
 \item{split}{logical, if true then the incoming signal will be proportionally splitted among the edges.}
 
-\item{sum}{logical, default value is FALSE. When set to true pathway activity formulas will be caculated via addition, when set to false then activity formulas will be calculated via multiplication.}
+\item{sum}{logical, default value is FALSE. When set to true pathway activity formulas will be calculated via addition, when set to false then activity formulas will be calculated via multiplication.}
 
 \item{tmm_mode}{when set to true specific PSF configuration will be used for calculation of the pathway activity formulas described in https://www.frontiersin.org/articles/10.3389/fgene.2021.662464/full}
 

@@ -7,7 +7,7 @@
 df_to_graphnel(node_table, edge_table)
 }
 \arguments{
-\item{node_table}{node data frame with specified columns. Mandatory columns: label, component_id_s, type. Non mandatory columns: psf_function, x, y.}
+\item{node_table}{node data frame with specified columns. Mandatory columns: node_id, label, component_id_s, type. Non mandatory columns: psf_function, x, y.}
 
 \item{edge_table}{edge data frame with specified columns. Mandatory columns: from, to, type. Non mandatory columns subtype, state, weight.}
 }

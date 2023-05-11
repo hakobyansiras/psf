@@ -9,6 +9,7 @@ plot_pathway(
   plot_type = "visnet",
   color_nodes = NULL,
   sample_id = "mean",
+  col_data = NULL,
   log_norm = T,
   highlight_nodes = NULL,
   highlight_color = "red",
@@ -19,13 +20,15 @@ plot_pathway(
 )
 }
 \arguments{
-\item{pathway}{pathway object}
+\item{pathway}{pathway object.}
 
 \item{plot_type}{network visualization type. Possible values c("kegg", "visnet"). When "kegg" option is used the pathway will be plotted over kegg png image. With "visnet" option, function will plot interactive network.}
 
 \item{color_nodes}{type of node values to be visualized. When value type is specified pathway nodes will be color coded with expression FC values or PSF values and color legend will be added to the pathway plot. Possible values are c(NULL, "psf_activities", "exp_fc"). Default value is NULL.}
 
-\item{sample_id}{name of the sample which will be used to visualize psf or exp fc values on pathway. To get averaged values accross samples set value to "mean". Default value is "mean".}
+\item{sample_id}{name of the sample which will be used to visualize psf or exp fc values on pathway. To get averaged values across samples set value to "mean". Default value is "mean".}
+
+\item{col_data}{sample information for calculated PSF activities. A data.frame with two columns, first column are sample ids (colnames of PSF activity matrix), second column group names. Default value is NULL. When data.frame with group information is provided plot_pathway will generate boxplots of sink values for each group in the righ side of the pathway.}
 
 \item{log_norm}{log transform PSF and expression values before color mapping. Default value is TRUE.}
 

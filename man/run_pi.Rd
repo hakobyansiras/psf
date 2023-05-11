@@ -14,20 +14,20 @@ run_pi(
 )
 }
 \arguments{
-\item{pathway}{Pathway onbject with calculated PSF activities with run_psf function.}
+\item{pathway}{Pathway object with calculated PSF activities with run_psf function.}
 
-\item{influenced_node}{sigle id of node or vector of node ids based on which partial influencse will be calculated.}
+\item{influenced_node}{single id of node or vector of node ids based on which partial influence will be calculated.}
 
 \item{influence_direction}{in which direction node affects the signal of target node(s). Possible values c("+", "-", "any"). Default value is "any".}
 
 \item{node_combinations}{number of node combinations for partial influence analysis. Note: number of PSF calculations increases by the exponent of combinations(N nodes^combinations). Default value is 1.}
 
-\item{get_influence_matrix}{When set to true influence matrix will be returned instead of influencial nodes. Each column in influence matrix represent the log ratio of default and neutralized node(s) psf profile.}
+\item{get_influence_matrix}{When set to true influence matrix will be returned instead of influential nodes. Each column in influence matrix represent the log ratio of default and neutralized node(s) psf profile.}
 
-\item{ncores}{integer, the number of CPUs to use for calculation. Deafult value is 1.}
+\item{ncores}{integer, the number of CPUs to use for calculation. Default value is 1.}
 }
 \value{
-Returns list with 2 objects. "ordered_influence_nodes" matrix with ordered nodes based on their influence where each column correspond to one sample. "mean_influence_params" dataframe with mean infulence parameters for each node (NULL when analysis performed for 1 sample).
+Returns list with 2 objects. "ordered_influence_nodes" matrix with ordered nodes based on their influence where each column correspond to one sample. "mean_influence_params" dataframe with mean influence parameters for each node (NULL when analysis performed for 1 sample).
 }
 \description{
 Performs partial influence analysis which evaluates effect of each pathway node on specific node(s) of the pathway.
