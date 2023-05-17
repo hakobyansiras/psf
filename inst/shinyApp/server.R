@@ -918,10 +918,12 @@ node_color_generator <- function(pathway, sample_id = "mean", log_norm = TRUE, c
       hover_text <- paste(paste("Log exp FC", round(log(pathway_exp_values + 0.00001), digits = 5)),
                           paste("Log PSF", round(log(pathway_psf_values + 0.00001), digits = 5)),
                           sep = "<br>")
+      node_values <- cbind(round(log(pathway_exp_values + 0.00001), digits = 5), round(log(pathway_psf_values + 0.00001), digits = 5))
     } else {
       hover_text <- paste(paste("Exp FC", round(pathway_exp_values, digits = 5)),
                           paste("PSF", round(pathway_psf_values, digits = 5)),
                           sep = "<br>")
+      node_values <- cbind(round(pathway_exp_values, digits = 5), round(pathway_psf_values, digits = 5))
     }
     
     names(hover_text) <- rownames(pathway$exp_fc)
@@ -964,7 +966,7 @@ node_color_generator <- function(pathway, sample_id = "mean", log_norm = TRUE, c
     col_legend_title = ifelse(log_norm, "Log FC value", "FC value")
   }
   
-  return(list(node_colors = node_colors, col_legend_title = col_legend_title, color_bar_lims = range(pathway_node_values), hover_text = hover_text))
+  return(list(node_colors = node_colors, col_legend_title = col_legend_title, color_bar_lims = range(pathway_node_values), hover_text = hover_text, node_values = node_values))
 }
 
 #### check user data ####
@@ -1128,7 +1130,7 @@ shinyServer(function(input, output, session) {
   
   #### pathway name rendering ####
   output$pathway_name_and_source <- renderText({
-    paste("<font color=\"#1f992f\"><b>", v$pathway_name, "</b></font>")
+    paste("<font color=\"#1f992f\"><b>", gsub("_", " ", v$pathway_name), "</b></font>")
   })
   
   #### swithcher for highlighting changed items ####
@@ -1339,6 +1341,11 @@ shinyServer(function(input, output, session) {
     updateCheckboxInput(session, "event_node_mode", value = FALSE)
     v$selected_node_name <- setNames(data.frame(matrix(ncol = 3, nrow = 0)), c("node_id", "component_id_s", "label"))
     v$from_nodes <- NULL
+    
+    v$node_colors <- NULL
+    v$graphnel_df$node_table$expression <- 1
+    v$graphnel_df$node_table$signal <- 1
+    
     v$image_file <- plot_kegg_pathway(graphnel_df = v$graphnel_df, group_graphics = v$pathway$group_nodes, pathway_image = v$pathway_image,
                                       node_colors = v$node_colors$node_colors, edge_mapping = FALSE, edge_in_mode = FALSE, highlight_nodes = NULL, highlight_color = "red",
                                       col_legend_title = v$node_colors$col_legend_title, color_bar_lims = v$node_colors$color_bar_lims, present_node_modifications = input$show_modified_nodes, removed_nodes = v$pathway$removed_nodes) %>%
@@ -1346,8 +1353,6 @@ shinyServer(function(input, output, session) {
     
     ### continue from here
     # v$visnet_list <- visnet_creator(v$graphical_data)
-    
-    v$node_colors <- NULL
     
   }, ignoreInit = TRUE)
   
@@ -2008,7 +2013,6 @@ shinyServer(function(input, output, session) {
   
   #### expression upload ####
   observeEvent(input$file, {
-  
     
     if(isTRUE(tryCatch( { as.matrix(suppressWarnings(fread(input$file$datapath, stringsAsFactors = F))) }
                  , error = function(e) {TRUE}))) {
@@ -2041,6 +2045,9 @@ shinyServer(function(input, output, session) {
         
         v$node_colors <- node_color_generator(pathway = v$pathway_psf[[v$pathway_name]], log_norm = input$log_norm_checkbox, sample_id = "mean", color_nodes = c("psf_activities", "fold_change")[as.integer(input$node_coloring_type)])
         
+        v$graphnel_df$node_table[rownames(v$node_colors$node_values), "expression"] <- v$node_colors$node_values[,1]
+        v$graphnel_df$node_table[rownames(v$node_colors$node_values), "signal"] <- v$node_colors$node_values[,2]
+        
         v$image_file <- plot_kegg_pathway(graphnel_df = v$graphnel_df, group_graphics = v$pathway$group_nodes, pathway_image = v$pathway_image,
                                           node_colors = v$node_colors$node_colors, edge_mapping = FALSE, edge_in_mode = FALSE, highlight_nodes = NULL, highlight_color = "red",
                                           col_legend_title = v$node_colors$col_legend_title, color_bar_lims = v$node_colors$color_bar_lims, present_node_modifications = input$show_modified_nodes, removed_nodes = v$pathway$removed_nodes) %>%
@@ -2069,6 +2076,9 @@ shinyServer(function(input, output, session) {
       if(v$allow_graph_param_update) {
         v$node_colors <- node_color_generator(pathway = v$pathway_psf[[v$pathway_name]], log_norm = input$log_norm_checkbox, sample_id = "mean", color_nodes = c("psf_activities", "fold_change")[as.integer(input$node_coloring_type)])
         
+        v$graphnel_df$node_table[rownames(v$node_colors$node_values), "expression"] <- v$node_colors$node_values[,1]
+        v$graphnel_df$node_table[rownames(v$node_colors$node_values), "signal"] <- v$node_colors$node_values[,2]
+        
         v$image_file <- plot_kegg_pathway(graphnel_df = v$graphnel_df, group_graphics = v$pathway$group_nodes, pathway_image = v$pathway_image,
                                           node_colors = v$node_colors$node_colors, edge_mapping = FALSE, edge_in_mode = FALSE, highlight_nodes = NULL, highlight_color = "red",
                                           col_legend_title = v$node_colors$col_legend_title, color_bar_lims = v$node_colors$color_bar_lims, present_node_modifications = input$show_modified_nodes, removed_nodes = v$pathway$removed_nodes) %>%
@@ -2096,12 +2106,17 @@ shinyServer(function(input, output, session) {
     if(v$allow_graph_param_update) {
       if(input$selected_sample %in% colnames(v$entrez_fc)) {
         v$node_colors <- node_color_generator(pathway = v$pathway_psf[[v$pathway_name]], log_norm = input$log_norm_checkbox, sample_id = input$selected_sample, color_nodes = c("psf_activities", "fold_change")[as.integer(input$node_coloring_type)])
+      } else {
+        v$node_colors <- node_color_generator(pathway = v$pathway_psf[[v$pathway_name]], log_norm = input$log_norm_checkbox, sample_id = "mean", color_nodes = c("psf_activities", "fold_change")[as.integer(input$node_coloring_type)])
+      }  
+      
+      v$graphnel_df$node_table[rownames(v$node_colors$node_values), "expression"] <- v$node_colors$node_values[,1]
+      v$graphnel_df$node_table[rownames(v$node_colors$node_values), "signal"] <- v$node_colors$node_values[,2]
         
-        v$image_file <- plot_kegg_pathway(graphnel_df = v$graphnel_df, group_graphics = v$pathway$group_nodes, pathway_image = v$pathway_image,
-                                          node_colors = v$node_colors$node_colors, edge_mapping = FALSE, edge_in_mode = FALSE, highlight_nodes = NULL, highlight_color = "red",
-                                          col_legend_title = v$node_colors$col_legend_title, color_bar_lims = v$node_colors$color_bar_lims, present_node_modifications = input$show_modified_nodes, removed_nodes = v$pathway$removed_nodes) %>%
-          image_write(tempfile(fileext='png'), format = 'png')
-      }
+      v$image_file <- plot_kegg_pathway(graphnel_df = v$graphnel_df, group_graphics = v$pathway$group_nodes, pathway_image = v$pathway_image,
+                                        node_colors = v$node_colors$node_colors, edge_mapping = FALSE, edge_in_mode = FALSE, highlight_nodes = NULL, highlight_color = "red",
+                                        col_legend_title = v$node_colors$col_legend_title, color_bar_lims = v$node_colors$color_bar_lims, present_node_modifications = input$show_modified_nodes, removed_nodes = v$pathway$removed_nodes) %>%
+        image_write(tempfile(fileext='png'), format = 'png')
     }
     
   })

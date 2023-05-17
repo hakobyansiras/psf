@@ -9,6 +9,7 @@ library(RColorBrewer)
 library(plotly)
 library(psf)
 library(biomaRt)
+library(WebGestaltR)
 ### loading curated pathway collection
 load(system.file("extdata", "edited_pathways_new.RData", package="psf"))
 
@@ -275,11 +276,11 @@ tissue_cluster_genestes_pseudobul <- lapply(names(gene_clust_full_features_pseud
   
   sig_genes <- rownames(gene_clust_full_features_pseudobul[[x]])[which(gene_clust_full_features_pseudobul[[x]]$p_val_adj < 0.05)]
   
-  webgestalt_sets <- WebGestaltR::WebGestaltR(enrichMethod = "ORA", organism = "hsapiens", 
-                                              enrichDatabase = "pathway_KEGG", 
-                                              interestGeneType = "entrezgene", isOutput = F, 
-                                              referenceSet = "genome", 
-                                              interestGene = sig_genes)
+  webgestalt_sets <- WebGestaltR(enrichMethod = "ORA", organism = "hsapiens", 
+                                 enrichDatabase = "pathway_KEGG", 
+                                 interestGeneType = "entrezgene", isOutput = F, 
+                                 referenceSet = "genome", 
+                                 interestGene = sig_genes)
 })
 
 names(tissue_cluster_genestes_pseudobul) <- names(gene_clust_full_features_pseudobul)

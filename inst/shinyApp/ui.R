@@ -3,9 +3,7 @@ library(DT)
 library(shinyWidgets)
 library(shinyjs)
 library(visNetwork)
-library("shinycssloaders")
 library(plotly)
-library(shinycssloaders)
 
 load("subtypes.RData")
 
@@ -182,7 +180,7 @@ shinyUI(
              wellPanel(
              style="background-color: #f2f2f2; height: 900px; width: 250px;",
              
-             div(style="display: inline-block;vertical-align:top; width: 210px;", htmlOutput('pathway_name_and_source')),
+             div(style="display: inline-block;vertical-align:top; width: 210px; word-wrap: break-word;", htmlOutput('pathway_name_and_source')),
              div(style="display: inline-block;vertical-align:top; width: 210px;", tags$hr(style="border-color: #1f992f;")),
              
              tabsetPanel(id = "app_mode",
