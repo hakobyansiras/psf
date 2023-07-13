@@ -469,6 +469,7 @@ run_psf <- function(entrez.fc, kegg.collection, calculate.significance = F, bst.
 #' @param pathway Pathway object with calculated PSF activities with run_psf function. 
 #' @param influenced_node single id of node or vector of node ids based on which partial influence will be calculated.
 #' @param influence_direction in which direction node affects the signal of target node(s). Possible values c("+", "-", "any"). Default value is "any".
+#' @param sample_id sample id or vector of sample ids for which partial influence will be calculated. Default value is "all".
 #' @param node_combinations number of node combinations for partial influence analysis. Note: number of PSF calculations increases by the exponent of combinations(N nodes^combinations). Default value is 1.
 #' @param get_influence_matrix When set to true influence matrix will be returned instead of influential nodes. Each column in influence matrix represent the log ratio of default and neutralized node(s) psf profile.
 #' @param ncores integer, the number of CPUs to use for calculation. Default value is 1.
@@ -476,10 +477,14 @@ run_psf <- function(entrez.fc, kegg.collection, calculate.significance = F, bst.
 #' @import parallel
 #' @import graph
 #' @export
-run_pi <- function(pathway, influenced_node, influence_direction = "any", node_combinations = 1, get_influence_matrix = FALSE, ncores = 1) {
+run_pi <- function(pathway, influenced_node, influence_direction = "any", sample_id = "all", node_combinations = 1, get_influence_matrix = FALSE, ncores = 1) {
   
   if(!("eval.exprs" %in% names(pathway))) {
     stop("Please provide pathway with evaluated activity")
+  }
+  
+  if(!(influenced_node %in% rownames(pathway$psf_activities))) {
+    stop("Specified id for influenced node(s) does not exist in the pathway")
   }
   
   node_combs <- combn(graph::nodes(pathway$graph), node_combinations, simplify = F)
@@ -504,6 +509,16 @@ run_pi <- function(pathway, influenced_node, influence_direction = "any", node_c
     
     return(eval_calculator(exp_ind = exp_ind, exp_data = updated_exp))
   }
+  
+  if(sample_id != "all") {
+    if(!all(sample_id %in% colnames(pathway$exp_fc))) {
+      stop("Please specify correct sample id(s)")
+    } else {
+      pathway$exp_fc <- pathway$exp_fc[,sample_id, drop = F]
+      pathway$psf_activities <- pathway$psf_activities[,sample_id, drop = F]
+    }
+  }
+  
   
   
   psf_influence_list <- lapply(1:ncol(pathway$exp_fc), function(x) {
@@ -1066,6 +1081,10 @@ generate_psf_report <- function(psf_list, folder_name, plot_type = "kegg", log_n
 #' @export
 graphnel_to_df <- function(pathway, extended = FALSE) {
   
+  if(length(pathway$graph@edgeData@data) == 0) {
+    stop("Please provide a pathway with at lease one edge")
+  }
+  
   splitted_interactions <- strsplit(names(pathway$graph@edgeData@data), split = "|", fixed = T)
   from <- as.character(sapply(splitted_interactions, "[[", 1))
   to <- as.character(sapply(splitted_interactions, "[[", 2))
@@ -1255,18 +1274,18 @@ df_to_graphnel <- function(node_table, edge_table) {
   )
   
   ### setting node default values
-  graph::nodeDataDefaults(g,attr="genes") <- 0
-  graph::nodeDataDefaults(g,attr="expression") <- 1
-  graph::nodeDataDefaults(g,attr="signal") <- 1
-  graph::nodeDataDefaults(g,attr="type") <- "gene"
-  graph::nodeDataDefaults(g,attr="label") <- ""
-  graph::nodeDataDefaults(g,attr="components") <- "NA"
-  graph::nodeDataDefaults(g,attr="psf_function") <- "mean"
-  graph::nodeDataDefaults(g,attr="x") <- NA
-  graph::nodeDataDefaults(g,attr="y") <- NA
-  graph::nodeDataDefaults(g,attr="node_width") <- NA
-  graph::nodeDataDefaults(g,attr="node_height") <- NA
-  graph::nodeDataDefaults(g,attr="node_id") <- "0"
+  graph::nodeDataDefaults(g, attr="genes") <- 0
+  graph::nodeDataDefaults(g, attr="expression") <- 1
+  graph::nodeDataDefaults(g, attr="signal") <- 1
+  graph::nodeDataDefaults(g, attr="type") <- "gene"
+  graph::nodeDataDefaults(g, attr="label") <- ""
+  graph::nodeDataDefaults(g, attr="components") <- "NA"
+  graph::nodeDataDefaults(g, attr="psf_function") <- "mean"
+  graph::nodeDataDefaults(g, attr="x") <- NA
+  graph::nodeDataDefaults(g, attr="y") <- NA
+  graph::nodeDataDefaults(g, attr="node_width") <- NA
+  graph::nodeDataDefaults(g, attr="node_height") <- NA
+  graph::nodeDataDefaults(g, attr="node_id") <- "0"
   graph::nodeDataDefaults(g, attr = "existence") <- "exist"
   graph::nodeDataDefaults(g, attr = "change_info") <- "no_change"
   graph::nodeDataDefaults(g, attr = "data_source") <- "kegg"
@@ -1302,7 +1321,6 @@ df_to_graphnel <- function(node_table, edge_table) {
       graph::edgeData(g, from = edge_table[j,"from"], to = edge_table[j,"to"], attr = i) <- edge_table[j,i]
     }
   }
-  
   
   pathway <- list(graph = g)
   pathway$sink.nodes <- psf::determine.sink.nodes(pathway)
