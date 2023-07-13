@@ -8,6 +8,7 @@ run_pi(
   pathway,
   influenced_node,
   influence_direction = "any",
+  sample_id = "all",
   node_combinations = 1,
   get_influence_matrix = FALSE,
   ncores = 1
@@ -19,6 +20,8 @@ run_pi(
 \item{influenced_node}{single id of node or vector of node ids based on which partial influence will be calculated.}
 
 \item{influence_direction}{in which direction node affects the signal of target node(s). Possible values c("+", "-", "any"). Default value is "any".}
+
+\item{sample_id}{sample id or vector of sample ids for which partial influence will be calculated. Default value is "all".}
 
 \item{node_combinations}{number of node combinations for partial influence analysis. Note: number of PSF calculations increases by the exponent of combinations(N nodes^combinations). Default value is 1.}
 
