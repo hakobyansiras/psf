@@ -593,7 +593,9 @@ run_pi <- function(pathway, influenced_node, influence_direction = "any", sample
 #' Plots the pathway with colored nodes and labels
 #' @param pathway pathway object.
 #' @param plot_type network visualization type. Possible values c("kegg", "visnet"). When "kegg" option is used the pathway will be plotted over kegg png image. With "visnet" option, function will plot interactive network.
+#' @param plot_layout layout type of the pathway. Only works in visnet plot_type. Default value is NULL. Available values c("layout_nicely").
 #' @param color_nodes type of node values to be visualized. When value type is specified pathway nodes will be color coded with expression FC values or PSF values and color legend will be added to the pathway plot. Possible values are c(NULL, "psf_activities", "exp_fc"). Default value is NULL.
+#' @param multi_color_nodes when set to true nodes of the pathway will be colored with multiple colors based on the provided sample vector or groups (maximum number is 4). Available only for the kegg visualization.
 #' @param sample_id name of the sample which will be used to visualize psf or exp fc values on pathway. To get averaged values across samples set value to "mean". Default value is "mean". 
 #' @param col_data sample information for calculated PSF activities. A data.frame with two columns, first column are sample ids (colnames of PSF activity matrix), second column group names. Default value is NULL. When data.frame with group information is provided plot_pathway will generate boxplots of sink values for each group in the righ side of the pathway.
 #' @param log_norm log transform PSF and expression values before color mapping. Default value is TRUE.
@@ -608,8 +610,8 @@ run_pi <- function(pathway, influenced_node, influence_direction = "any", sample
 #' @import visNetwork
 #' @import RCurl
 #' @export
-plot_pathway <- function(pathway, plot_type = "visnet",
-                         color_nodes = NULL, sample_id = "mean", col_data = NULL, log_norm = T, 
+plot_pathway <- function(pathway, plot_type = "visnet", plot_layout = NULL,
+                         color_nodes = NULL, multi_color_nodes = FALSE, sample_id = "mean", col_data = NULL, log_norm = T, 
                          highlight_nodes = NULL, highlight_color = "red", plot_sink_values = F,
                          y_adj_text = 0, y_adj_sink = 0, use_old_images = F) {
   
@@ -627,12 +629,56 @@ plot_pathway <- function(pathway, plot_type = "visnet",
   
   if("exp_fc" %in% names(pathway)) {
     mapping_data = TRUE
-    if(sample_id == "mean") {
-      pathway_exp_values <- rowMeans(pathway$exp_fc)
-      pathway_psf_values <- rowMeans(pathway$psf_activities)
+    
+    if(multi_color_nodes) {
+      
+      if(length(sample_id) > 1 && !is.null(col_data)) {
+        stop("Multiple samples can not be plotted when coldata is provided.")
+      }
+      
+      if(length(unique(col_data[,2])) > 4 || length(sample_id) > 4) {
+        stop("Multicolor node mode is available for up to 4 groups/samples")
+      }
+      
+      gene_nodes <- graph::nodes(pathway$graph)[which(unlist(graph::nodeData(pathway$graph, attr = "type")) == "gene")]
+      
+      if(length(sample_id) > 1) {
+        pathway_exp_values <- Reduce(c,
+                                     lapply(sample_id, function(x) {
+                                       setNames(nm = paste(x, gene_nodes, sep = ";"), object = pathway$exp_fc[gene_nodes,x])
+                                     }))
+        
+        pathway_psf_values <- Reduce(c, 
+                                     lapply(sample_id, function(x) {
+                                       setNames(nm = paste(x, gene_nodes, sep = ";"), pathway$psf_activities[gene_nodes,x])
+                                     }))
+      }
+      
+      if(!is.null(col_data)) {
+        pathway_exp_values <- Reduce(c,
+                                     lapply(unique(col_data[,2]), function(x) {
+                                       setNames(nm = paste(x, gene_nodes, sep = ";"), 
+                                                object = rowMeans(pathway$exp_fc[gene_nodes,col_data[which(col_data[,2] == x),1]])
+                                       )
+                                     }))
+        
+        pathway_psf_values <- Reduce(c, 
+                                     lapply(unique(col_data[,2]), function(x) {
+                                       setNames(nm = paste(x, gene_nodes, sep = ";"), 
+                                                rowMeans(pathway$psf_activities[gene_nodes,col_data[which(col_data[,2] == x),1]])
+                                       )
+                                     }))   
+      }
+      
+      
     } else {
-      pathway_exp_values <- pathway$exp_fc[,sample_id]
-      pathway_psf_values <- pathway$psf_activities[,sample_id]
+      if(sample_id == "mean") {
+        pathway_exp_values <- rowMeans(pathway$exp_fc)
+        pathway_psf_values <- rowMeans(pathway$psf_activities)
+      } else {
+        pathway_exp_values <- pathway$exp_fc[,sample_id]
+        pathway_psf_values <- pathway$psf_activities[,sample_id]
+      }
     }
     
     if(log_norm) {
@@ -642,14 +688,15 @@ plot_pathway <- function(pathway, plot_type = "visnet",
       pathway_exp_values <- round(drop(pathway_exp_values)[order(drop(pathway_exp_values))], digits = 5)
       pathway_psf_values <- round(drop(pathway_psf_values)[order(drop(pathway_psf_values))], digits = 5)
     }
+    
   } else {
     mapping_data = FALSE
   }
   
   ### adding group coloring. Still experimental
-  if(!is.null(col_data)) {
-    color_nodes = NULL
-  }
+  # if(!is.null(col_data)) {
+  #   color_nodes = NULL
+  # }
   
   if(!is.null(color_nodes)) {
     
@@ -668,8 +715,14 @@ plot_pathway <- function(pathway, plot_type = "visnet",
                                 stringsAsFactors = F
       )
       
-      node_colors <- node_colors[which(node_colors$node_id %in% graph::nodes(pathway$graph)[which(unlist(graph::nodeData(pathway$graph, attr = "type")) != "map")]),]
-      rownames(node_colors) <- node_colors$node_id
+      if(multi_color_nodes) {
+        node_colors$group <- sapply(node_colors$node_id, function(x) {unlist(strsplit(x, split = ";"))[1]})
+        node_colors$node_id <- sapply(node_colors$node_id, function(x) {unlist(strsplit(x, split = ";"))[2]})
+      } else {
+        node_colors <- node_colors[which(node_colors$node_id %in% graph::nodes(pathway$graph)[which(unlist(graph::nodeData(pathway$graph, attr = "type")) != "map")]),]
+        rownames(node_colors) <- node_colors$node_id
+      }
+      
       
     } else {
       stop("Please provide pathway with evalueated activity")
@@ -709,26 +762,63 @@ plot_pathway <- function(pathway, plot_type = "visnet",
     
     img <- magick::image_draw(pathway_image)
     
-    ### node exp coloring
+    ### node coloring
     if(any(node_graphics$node_id %in% node_colors$node_id)) {
-      coloring_set <- node_graphics[node_colors$node_id,]
-      graphics::rect(coloring_set$x_start,
-                     coloring_set$y_start - 1,
-                     coloring_set$x_end,
-                     coloring_set$y_end,
-                     # border = coloring_set$border_color,
-                     border = NA,
-                     # lty = coloring_set$lty_type,
-                     lwd=2,
-                     col = grDevices::adjustcolor(node_colors$col, alpha.f = 1)
-      )
-      
-      graphics::text(x = coloring_set$x,
-                     y = coloring_set$y_start + y_adj_text,
-                     labels = coloring_set$label,
-                     col = node_colors$text_col, adj = c(0,0.2) + c(0.48, 1))
-      
+      if(multi_color_nodes) {
+        
+        group_size <- length(unique(node_colors$group))
+        
+        lapply(0:(length(unique(node_colors$group)) - 1), function(x) {
+          
+          group_node_colors <- node_colors[which(node_colors$group == unique(node_colors$group)[x+1]),]
+          coloring_set <- node_graphics[unique(group_node_colors$node_id),]
+          coloring_set$width <- (coloring_set$x_end - coloring_set$x_start)/group_size
+          
+          coloring_set$x_start <- coloring_set$x_start + coloring_set$width*x
+          coloring_set$x_end <- coloring_set$x_start + coloring_set$width
+          
+          graphics::rect(coloring_set$x_start,
+                         coloring_set$y_start - 1,
+                         coloring_set$x_end,
+                         coloring_set$y_end,
+                         # border = coloring_set$border_color,
+                         border = NA,
+                         # lty = coloring_set$lty_type,
+                         lwd=2,
+                         col = grDevices::adjustcolor(group_node_colors$col, alpha.f = 1)
+          )
+          
+          if(x == (length(unique(node_colors$group)) - 1)) {
+            graphics::text(x = coloring_set$x,
+                           y = coloring_set$y_start + y_adj_text,
+                           labels = coloring_set$label,
+                           col = "black", adj = c(0,0.2) + c(0.48, 1))
+          }
+          
+        })
+        
+      } else {
+        coloring_set <- node_graphics[node_colors$node_id,]
+        graphics::rect(coloring_set$x_start,
+                       coloring_set$y_start - 1,
+                       coloring_set$x_end,
+                       coloring_set$y_end,
+                       # border = coloring_set$border_color,
+                       border = NA,
+                       # lty = coloring_set$lty_type,
+                       lwd=2,
+                       col = grDevices::adjustcolor(node_colors$col, alpha.f = 1)
+        )
+        
+        graphics::text(x = coloring_set$x,
+                       y = coloring_set$y_start + y_adj_text,
+                       labels = coloring_set$label,
+                       col = node_colors$text_col, adj = c(0,0.2) + c(0.48, 1))
+        
+      }
     }
+    
+    
     
     ### adding sink node labels
     graphics::text(x = node_graphics[node_graphics$sink,"x_end"] + 10,
@@ -795,7 +885,7 @@ plot_pathway <- function(pathway, plot_type = "visnet",
         psf_activities_vec <- as.vector(pathway$psf_activities[pathway$sink.nodes,])
         
         names(psf_activities_vec) <- rep(pathway$sink.nodes, ncol(pathway$psf_activities))
-
+        
         if(log_norm) {
           psf_activities_vec <- log(psf_activities_vec)
         }
@@ -867,6 +957,10 @@ plot_pathway <- function(pathway, plot_type = "visnet",
     node_table <- pathway_tables$node_table[,c("node_id", "label", "vis_width", "font.color", "size", "font.size", "borderWidth", "color.border", "color.background", "shape", "title", "x", "y")]
     
     colnames(node_table) <- c("id", "label", "widthConstraint.maximum", "font.color", "size", "font.size", "borderWidth", "color.border", "color.background", "shape", "title", "x", "y")
+    
+    if(!is.null(plot_layout)) {
+      node_table <- node_table[,1:11]
+    }
     
     edge_table <- pathway_tables$edge_table[,c("from", "to", "color", "arrows.to.enabled", "arrows.to.type", "label", "dashes")]
     
@@ -955,14 +1049,16 @@ plot_pathway <- function(pathway, plot_type = "visnet",
         color.background = "",
         shape = "image", 
         title = "",
-        x = max(graphical_data$node_coords$x_end),
-        y = min(graphical_data$node_coords$y_end) - 10,
         image = legend_path
       )
       
+      if(is.null(plot_layout)) {
+        legend_data_frame$x <- max(node_table$x)
+        legend_data_frame$y <- min(node_table$y)
+      }
+      
       node_table <- rbind(node_table, legend_data_frame)
     }
-    
     
     saving_pathway_name <- gsub("(", "", pathway$attrs$title, fixed = T)
     saving_pathway_name <- gsub(")", "", saving_pathway_name, fixed = T)
