@@ -7,7 +7,9 @@
 plot_pathway(
   pathway,
   plot_type = "visnet",
+  plot_layout = NULL,
   color_nodes = NULL,
+  multi_color_nodes = FALSE,
   sample_id = "mean",
   col_data = NULL,
   log_norm = T,
@@ -24,7 +26,11 @@ plot_pathway(
 
 \item{plot_type}{network visualization type. Possible values c("kegg", "visnet"). When "kegg" option is used the pathway will be plotted over kegg png image. With "visnet" option, function will plot interactive network.}
 
+\item{plot_layout}{layout type of the pathway. Only works in visnet plot_type. Default value is NULL. Available values c("layout_nicely").}
+
 \item{color_nodes}{type of node values to be visualized. When value type is specified pathway nodes will be color coded with expression FC values or PSF values and color legend will be added to the pathway plot. Possible values are c(NULL, "psf_activities", "exp_fc"). Default value is NULL.}
+
+\item{multi_color_nodes}{when set to true nodes of the pathway will be colored with multiple colors based on the provided sample vector or groups (maximum number is 4). Available only for the kegg visualization.}
 
 \item{sample_id}{name of the sample which will be used to visualize psf or exp fc values on pathway. To get averaged values across samples set value to "mean". Default value is "mean".}
 
