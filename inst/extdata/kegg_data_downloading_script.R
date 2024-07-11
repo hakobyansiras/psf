@@ -126,7 +126,7 @@ edited_pathways_new$PI3K_Akt_signaling_pathway$order <- psf::order.nodes(edited_
 
 edited_pathways_new$PI3K_Akt_signaling_pathway$sink.nodes <- psf::determine.sink.nodes(edited_pathways_new$PI3K_Akt_signaling_pathway)
 
-### removing incorrectly connected map which was clasified as a sink node
+### removing incorrectly connected map which was classified as a sink node
 edited_pathways_new$MAPK_signaling_pathway$graph <- graph::removeEdge(from = "47", to = "42", graph = edited_pathways_new$MAPK_signaling_pathway$graph)
 edited_pathways_new$MAPK_signaling_pathway$graph <- psf::set.edge.impacts(edited_pathways_new$MAPK_signaling_pathway$graph)
 edited_pathways_new$MAPK_signaling_pathway$order <- psf::order.nodes(edited_pathways_new$MAPK_signaling_pathway$graph)

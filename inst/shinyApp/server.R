@@ -10,9 +10,11 @@ library(visNetwork)
 library(shinyjqui)
 library(ggplot2)
 library(igraph)
+library(shinyhelper)
 ### library(plotrix)
 
 load("whole_data_unit.RData")
+protein_drug_interactions <- fread("Protein_drug_interactions.tsv")
 options(shiny.maxRequestSize=50*1024^2)
 
 #############################################
@@ -20,7 +22,7 @@ options(shiny.maxRequestSize=50*1024^2)
 #############################################
 
 #### pathway kgml and image downloader ####
-kegg_data_downloader <- function(pathway_name) {
+kegg_data_downloader <- function(pathway_name, collection_name) {
   
   pathway_id <- pathway_codes_new[pathway_name]
   
@@ -33,7 +35,7 @@ kegg_data_downloader <- function(pathway_name) {
   download.file(kgml, destfile = kgml_path, method = "auto")
   
   # image_path <- tempfile()
-  image_path <- paste0("collection_dir/pathway_images/", pathway_id, ".png")
+  image_path <- paste0("collection_dir/", collection_name, "/pathway_images/", pathway_id, ".png")
   
   download.file(image, destfile = image_path, method = "auto")
   
@@ -754,7 +756,7 @@ visnet_creator <- function(graphical_data, node_colors = NULL, col_legend_title 
     
     magick::image_write(magick::image_trim(legend_img, fuzz = 0), path = temp_legend)
     
-    legend_path <- paste('data:image/png;base64', RCurl::base64Encode(readBin(temp_legend, 'raw', file.info('~/legend.png')[1, 'size']), 'txt'), sep = ',')
+    legend_path <- paste('data:image/png;base64', RCurl::base64Encode(readBin(temp_legend, 'raw', file.info(temp_legend)[1, 'size']), 'txt'), sep = ',')
     
     legend_data_frame <- data.frame(
       id = as.character(max(as.integer(graphical_data$node_coords$node_id)) + 1),
@@ -969,57 +971,59 @@ node_color_generator <- function(pathway, sample_id = "mean", log_norm = TRUE, c
   return(list(node_colors = node_colors, col_legend_title = col_legend_title, color_bar_lims = range(pathway_node_values), hover_text = hover_text, node_values = node_values))
 }
 
-#### check user data ####
-if(file.exists("collection_dir") & length(dir("collection_dir/pathways/") > 0)) {
-  pathway <- readRDS(dir("collection_dir/pathways", full.names = T)[1])
-  pathway_name <- gsub(".RDS", "", dir("collection_dir/pathways")[1])
-  graphnel_df <- graphnel_to_df(pathway, extended = TRUE)
-  
-  if(file.exists(paste0("collection_dir/pathway_images/", pathway_codes_new[pathway_name], ".png"))) {
-    image <- magick::image_read(paste0("collection_dir/pathway_images/", pathway_codes_new[pathway_name], ".png"))
-    
-    rendering_image <- plot_kegg_pathway(graphnel_df = graphnel_df, group_graphics = pathway$group_nodes, pathway_image = image,
-                                         node_colors = NULL, edge_mapping = FALSE, edge_in_mode = FALSE, highlight_nodes = NULL, highlight_color = "red",
-                                         col_legend_title = NULL, color_bar_lims, present_node_modifications = FALSE, removed_nodes = pathway$removed_nodes) %>%
-      image_write(tempfile(fileext='png'), format = 'png')
-  } else {
-    image <- NULL
-    rendering_image <- NULL
-  }
-} else {
-  
-  if(!file.exists("collection_dir")) {
-    dir.create("collection_dir")
-    dir.create("collection_dir/pathways")
-    dir.create("collection_dir/pathway_images")
-  }
-  
-  pathway_name <- "Chemokine_signaling_pathway"
-  pathway_data <- kegg_data_downloader(pathway_name)
-  pathway <- pathway_data$pathway
-  image <- pathway_data$image
-  
-  graphnel_df <- graphnel_to_df(pathway, extended = TRUE)
-  
-  rendering_image <- plot_kegg_pathway(graphnel_df = graphnel_df, group_graphics = pathway$group_nodes, pathway_image = image,
-                                       node_colors = NULL, edge_mapping = FALSE, edge_in_mode = FALSE, highlight_nodes = NULL, highlight_color = "red",
-                                       col_legend_title = NULL, color_bar_lims, present_node_modifications = FALSE, removed_nodes = pathway$removed_nodes) %>%
-    image_write(tempfile(fileext='png'), format = 'png')
-}
+# #### check user data ####
+# if(file.exists("collection_dir") & length(dir("collection_dir/pathways/") > 0)) {
+#   pathway <- readRDS(dir("collection_dir/pathways", full.names = T)[1])
+#   pathway_name <- gsub(".RDS", "", dir("collection_dir/pathways")[1])
+#   graphnel_df <- graphnel_to_df(pathway, extended = TRUE)
+#   
+#   if(file.exists(paste0("collection_dir/pathway_images/", pathway_codes_new[pathway_name], ".png"))) {
+#     image <- magick::image_read(paste0("collection_dir/pathway_images/", pathway_codes_new[pathway_name], ".png"))
+#     
+#     rendering_image <- plot_kegg_pathway(graphnel_df = graphnel_df, group_graphics = pathway$group_nodes, pathway_image = image,
+#                                          node_colors = NULL, edge_mapping = FALSE, edge_in_mode = FALSE, highlight_nodes = NULL, highlight_color = "red",
+#                                          col_legend_title = NULL, color_bar_lims, present_node_modifications = FALSE, removed_nodes = pathway$removed_nodes) %>%
+#       image_write(tempfile(fileext='png'), format = 'png')
+#   } else {
+#     image <- NULL
+#     rendering_image <- NULL
+#   }
+# } else {
+#   
+#   if(!file.exists("collection_dir")) {
+#     dir.create("collection_dir")
+#     dir.create("collection_dir/pathways")
+#     dir.create("collection_dir/pathway_images")
+#   }
+#   
+#   pathway_name <- "Chemokine_signaling_pathway"
+#   pathway_data <- kegg_data_downloader(pathway_name)
+#   pathway <- pathway_data$pathway
+#   image <- pathway_data$image
+#   
+#   graphnel_df <- graphnel_to_df(pathway, extended = TRUE)
+#   
+#   rendering_image <- plot_kegg_pathway(graphnel_df = graphnel_df, group_graphics = pathway$group_nodes, pathway_image = image,
+#                                        node_colors = NULL, edge_mapping = FALSE, edge_in_mode = FALSE, highlight_nodes = NULL, highlight_color = "red",
+#                                        col_legend_title = NULL, color_bar_lims, present_node_modifications = FALSE, removed_nodes = pathway$removed_nodes) %>%
+#     image_write(tempfile(fileext='png'), format = 'png')
+# }
 
 
 shinyServer(function(input, output, session) {
   
   #### reactive values ####
-  v <- reactiveValues(image_file = rendering_image,
-                      pathway_name = pathway_name,
-                      pathway = pathway, pathway_image = image, # pathway_data = chemokine_pathway_data, 
-                      graphnel_df = graphnel_df, # graphical_data = graphical_data_generator(chemokine_pathway_data$pathway), 
-                      undo_stack = list(graphnel_df),
+  v <- reactiveValues(image_file = NULL,
+                      pathway_name = NULL,
+                      collection_name = NULL,
+                      pathway = NULL, pathway_image = NULL,
+                      graphnel_df = NULL,
+                      undo_stack = list(),
                       redo_stack = NULL,
+                      pathway_load_alert = 0,
                       selected_node_name = setNames(data.frame(matrix(ncol = 3, nrow = 0)), c("node_id", "component_id_s", "label")),
                       from_nodes = NULL, database_out = NULL, searching_state = FALSE, 
-                      database_search_node = NULL, selected_interaction = NULL, edge_adding_error = "", edge_adding_error_visnet = "", node_data_adding_error_visnet = "",
+                      database_search_node = NULL, selected_interaction = NULL, collection_load_error = "", edge_adding_error = "", edge_adding_error_visnet = "", node_data_adding_error_visnet = "",
                       event_node_type = scan(file = "event_names.txt", what = "character", sep = "\t"), pathway_change_alert = 0, undo_alert = 0,
                       edge_edit_stage = FALSE, previous_row_selection = 0, allow_edge_draw = TRUE,
                       psf_and_colors = NULL, draw_color_bar = FALSE, col_legend_title = "", color_bar_lims = NULL, color_bar_psf_mode = FALSE, 
@@ -1027,90 +1031,228 @@ shinyServer(function(input, output, session) {
                       mapping_value_type = NULL, exp_uploaded = NULL, entrez_fc = NULL,
                       allow_graph_param_update = FALSE, sink_values_plot = NULL,
                       edge_network_table_filtered = NULL, node_network_table_filtered = NULL, 
-                      visnet_coord_ranges = NULL, node_edit_mode = FALSE, loaded_collection = NULL                   
+                      visnet_coord_ranges = NULL, node_edit_mode = FALSE, loaded_collection = NULL, drug_table = NULL, visnet_highlighted_nodes = NULL                   
   )
   
-  #### loading collection folder if exists ####
-  observe({
-    isolate({
-      if(length(dir("collection_dir/pathways/") > 0)) {
-        if(any(gsub(".RDS", "", dir("collection_dir/pathways")) %in% kegg_human_pathway_list$Name)) {
-          updateRadioButtons(session, inputId = "pathway_source_selector", selected = 2)
-          show('pathway_source_radio')
-        }
-        updateSelectizeInput(session, "selected_pathway", choices = gsub(".RDS", "", dir("collection_dir/pathways")), selected = v$pathway_name, label = "Select pathway", server = TRUE)
-        show('pathway_name_selector')
-      } else {
-        updateRadioButtons(session, inputId = "pathway_source_selector", selected = 1)
-      }
-    })
+  observeEvent(input$add_load_collection, {
+    
+    if(length(dir("collection_dir/")) > 0) {
+      show('collection_selector')
+    } else {
+      hide('collection_selector')
+    }
+    
+    showModal(modalDialog(
+      title = NULL,
+      size = "m",
+      footer = tagList(column(12, align="center", 
+                              useShinyjs(),
+                              div(id = "collecton_source_radio", radioButtons("collection_source_selector", label = NULL, choices = list("New collection" = 1, "Local collection" = 2, "Collection zip" = 3), selected = 1, inline = T)),
+                              div(id = "new_collection_name_input", textInput("collection_name", label = "Collection name*")),
+                              hidden(div(id = "collection_selector", style = "vertical-align:top; width: 210px;", selectizeInput("selected_collection", label = "Select collection", choices = c(dir("collection_dir/"), ""), selected = ""))),
+                              hidden(div(id = "collection_loader", style="vertical-align:top; width: 210px;", fileInput("load_collection", label = "Load collection", accept = ".zip"))),
+                              htmlOutput('collection_load_error'),
+                              actionButton("load_selected_collecton", label = "Add/Load"), modalButton("Cancel")
+      )
+      ),
+      easyClose = TRUE
+    ))
+    
   })
   
-  #### pathway source selection ####
-  observeEvent(input$pathway_source, {
-    if(input$pathway_source == "Pathway collection") {
-      hide('pathway_name_selector')
+  observeEvent(input$collection_source_selector, {
+    if(input$collection_source_selector == 1) {
+      show('new_collection_name_input')
+      hide('collection_selector')
+      # updateSelectizeInput(session, "selected_collection", selected = "", server = TRUE)
+      hide('collection_loader')
+    }
+    if(input$collection_source_selector == 2) {
+      hide('new_collection_name_input')
+      # updateTextInput(session, "collection_name", value = "")
+      show('collection_selector')
+      hide('collection_loader')
+    } 
+    if(input$collection_source_selector == 3) {
+      hide('new_collection_name_input')
+      # updateTextInput(session, "collection_name", value = "")
+      hide('collection_selector')
+      # updateSelectizeInput(session, "selected_collection", selected = "", server = TRUE)
       show('collection_loader')
     }
-    if(input$pathway_source == "DF") {
-      hideTab(session, inputId = "net_vis_panels", target = "1")
-      hide('pathway_name_selector')
-      hide('collection_loader')
-      show('df_loader')
-    }
-    if(input$pathway_source == "Editor") {
-      hideTab(session, inputId = "net_vis_panels", target = "1")
-      hide('pathway_name_selector')
-    }
-  }, ignoreInit = TRUE)
+  })
   
-  
-  #### collection loader ####
-  observeEvent(input$load_collection, {
-    if(grepl("zip", input$load_collection$datapath)) {
-      unzip(zipfile = input$load_collection$datapath)
-      if(any(gsub(".RDS", "", dir("collection_dir/pathways")) %in% kegg_human_pathway_list$Name)) {
-        showTab(session, select = F, inputId = "net_vis_panels", target = "1")
-        updateRadioButtons(session, inputId = "pathway_source_selector", selected = 2)
+  observeEvent(input$load_selected_collecton, {
+    
+    v$image_file <- NULL
+    v$pathway_name <- NULL
+    v$pathway <- NULL
+    v$graphnel_df <- NULL
+    v$pathway_image <- NULL
+    undo_stack <- list()
+    redo_stack <- NULL
+    
+    if(input$collection_source_selector == 1) {
+      if(input$collection_name != "") {
+        v$collection_name <- input$collection_name
+        
+        if(!file.exists("collection_dir")) {
+          dir.create("collection_dir/")
+        }
+        
+        dir.create(paste0("collection_dir/", input$collection_name))
+        dir.create(paste0("collection_dir/", input$collection_name, "/pathways"))
+        dir.create(paste0("collection_dir/", input$collection_name, "/pathway_images"))
+        
+        updateSelectizeInput(session, "selected_pathway", choices = "", label = "Select pathway", server = TRUE)
+        show('pathway_loading_widgets')
+        hide('curation_tools')
+        removeModal()
+      } else {
+        v$collection_load_error <- "Please speciy name of the new collection"
+        delay(3000, v$collection_load_error <- "")
       }
-      
-      updateSelectizeInput(session, "selected_pathway", choices = gsub(".RDS", "", dir("collection_dir/pathways")), selected = gsub(".RDS", "", dir("collection_dir/pathways"))[1], label = "Select pathway", server = TRUE)
-      show('pathway_name_selector')  
+    }
+    if(input$collection_source_selector == 2) {
+      if(input$selected_collection != "") {
+        v$collection_name <- input$selected_collection
+        
+        collection_pathways <- gsub(".RDS", "", dir(paste0("collection_dir/", v$collection_name, "/pathways")))
+        
+        if(any(collection_pathways %in% kegg_human_pathway_list$Name)) {
+          showTab(session, select = F, inputId = "net_vis_panels", target = "1")
+        }
+        
+        updateSelectizeInput(session, "selected_pathway", choices = collection_pathways, selected = collection_pathways[1], label = "Select pathway", server = TRUE)
+        show('pathway_loading_widgets')
+        removeModal()
+        
+        if(length(collection_pathways) == 0) {
+          hide('curation_tools')
+        }
+        
+      } else {
+        v$collection_load_error <- "Please select collection before loading"
+        delay(3000, v$collection_load_error <- "")
+      }
+    } 
+    if(input$collection_source_selector == 3) {
+      if(length(input$load_collection$datapath) > 0) {
+        #### collection loader ####
+        if(grepl("zip", input$load_collection$datapath)) {
+          v$collection_name <- gsub("/", "", unzip(zipfile = input$load_collection$datapath, list = TRUE)$Name[1])
+          unzip(zipfile = input$load_collection$datapath, exdir = "collection_dir")
+          
+          collection_pathways <- gsub(".RDS", "", dir(paste0("collection_dir/", v$collection_name, "/pathways")))
+          
+          if(any(collection_pathways %in% kegg_human_pathway_list$Name)) {
+            showTab(session, select = F, inputId = "net_vis_panels", target = "1")
+          }
+          
+          updateSelectizeInput(session, "selected_pathway", choices = collection_pathways, selected = collection_pathways[1], label = "Select pathway", server = TRUE)
+          show('pathway_loading_widgets')
+        }
+        removeModal()
+        
+        if(length(collection_pathways) == 0) {
+          hide('curation_tools')
+        }
+        
+      } else {
+        v$collection_load_error <- "Please upload collection before loading"
+        delay(3000, v$collection_load_error <- "")
+      }
+    }
+    
+  })
+  
+  output$collection_load_error <- renderText({
+    paste("<font color=\"#ff0000\"><b>", v$collection_load_error, "</b></font>")
+  })
+  
+  
+  #### New pathway popup ####
+  observeEvent(input$add_pathway, {
+    
+    showModal(modalDialog(
+      title = NULL,
+      size = "m",
+      footer = tagList(column(12, align="center", 
+                              useShinyjs(),
+                              div(style="vertical-align:top; width: 210px;", selectizeInput("new_pathway_source", label = "Pathway source", choices = c("KEGG", "DF", "Editor"), selected = "KEGG")),
+                              div(id = "new_kegg_pathway_selector",
+                                  div(style = "display: inline-block; vertical-align:top; width: 210px;",selectizeInput("new_kegg_pathway_organism", label = "Select organism", choices = "hsa", selected = "hsa")),
+                                  div(style = "display: inline-block; vertical-align:top; width: 210px;",selectizeInput("new_kegg_pathway", label = "Select new pathway", choices = kegg_human_pathway_list$Name, selected = ""))
+                              ),
+                              hidden(div(id = "dfs_loader", 
+                                         div(style = "display: inline-block; vertical-align:top; width: 210px;", fileInput("df_node_table", label = "Load node table", accept = ".tsv")),
+                                         div(style = "display: inline-block; vertical-align:top; width: 210px;", fileInput("df_edge_table", label = "Load edge table", accept = ".tsv")))
+                                     ),
+                              hidden(div(id = "pathway_name_text_input", 
+                                         textInput("new_pathway_name", label = "Pathway name*"))
+                                     ),
+                              actionButton("add_new_pathway", label = "Add"), modalButton("Cancel")
+      )
+      ),
+      easyClose = TRUE
+    ))
+    
+  })
+  
+  
+  observeEvent(input$new_pathway_source, {
+    if(input$new_pathway_source == "KEGG") {
+      show('new_kegg_pathway_selector')
+      hide('dfs_loader')
+      hide('pathway_name_text_input')
+    }
+    if(input$new_pathway_source == "DF") {
+      hide('new_kegg_pathway_selector')
+      show('dfs_loader')
+      show('pathway_name_text_input')
+    }
+    if(input$new_pathway_source == "Editor") {
+      hide('dfs_loader')
+      hide('new_kegg_pathway_selector')
+      show('pathway_name_text_input')
     }
   })
   
-  #### pathway source selector for collection ####
-  observeEvent(input$pathway_source_selector, {
-    if(input$pathway_source_selector == 1) {
-      updateSelectizeInput(session, "selected_pathway", choices = kegg_human_pathway_list$Name, selected = "", label = "Add from KEGG", server = TRUE)
-    } else {
-      updateSelectizeInput(session, "selected_pathway", choices = gsub(".RDS", "", dir("collection_dir/pathways")), 
-                           selected = ifelse(v$pathway_name %in% gsub(".RDS", "", dir("collection_dir/pathways")), v$pathway_name, ""), label = "Select pathway", server = TRUE)
+  #### add new pathway to collection ####
+  observeEvent(input$add_new_pathway, {
+    
+    if(input$new_pathway_source == "KEGG") {
+      pathway_data <- kegg_data_downloader(input$new_kegg_pathway, collection_name = v$collection_name)
+      saveRDS(pathway_data$pathway, file = paste0("collection_dir/", v$collection_name, "/pathways/", input$new_kegg_pathway, ".RDS"))
+      updateSelectizeInput(session, "selected_pathway", choices = gsub(".RDS", "", dir(paste0("collection_dir/", v$collection_name, "/pathways"))), selected = input$new_kegg_pathway, label = "Select pathway", server = TRUE)
+      removeModal()
+      
     }
-  }, ignoreInit = TRUE)
+    if(input$new_pathway_source == "DF") {
+      hideTab(session, select = F, inputId = "net_vis_panels", target = "1")
+      
+    }
+    if(input$new_pathway_source == "Editor") {
+      hideTab(session, select = F, inputId = "net_vis_panels", target = "1")
+      
+    }
+    
+  })
   
   #### pathway selection by selectize input ####
   observeEvent(input$load_pathway, {
     if(input$selected_pathway != "") {
-      
       v$pathway_name <- input$selected_pathway
       
       v$image_file <- NULL
       
-      if(input$pathway_source == "Pathway collection") {
-        if(input$pathway_source_selector == 1) {
-          pathway_data <- kegg_data_downloader(v$pathway_name)
-          v$pathway <- pathway_data$pathway
-          v$pathway_image <- pathway_data$image
-        } else {
-          v$pathway <- readRDS(paste0("collection_dir/pathways/", v$pathway_name, ".RDS"))
-          v$pathway_image <- magick::image_read(paste0("collection_dir/pathway_images/", pathway_codes_new[v$pathway_name], ".png"))
-        }
-      }
+      v$pathway <- readRDS(paste0("collection_dir/", v$collection_name, "/pathways/", v$pathway_name, ".RDS"))
+      v$pathway_image <- magick::image_read(paste0("collection_dir/", v$collection_name, "/pathway_images/", pathway_codes_new[v$pathway_name], ".png"))
       
       v$graphnel_df <- graphnel_to_df(v$pathway, extended = TRUE)
       
       hide('vis_buttons')
+      hide('pi_and_topology_analysis')
       
       v$undo_stack <- list(v$graphnel_df)
       v$redo_stack <- NULL
@@ -1125,12 +1267,14 @@ shinyServer(function(input, output, session) {
                         col_legend_title = NULL, color_bar_lims, present_node_modifications = input$show_modified_nodes, removed_nodes = v$pathway$removed_nodes) %>%
         image_write(tempfile(fileext='png'), format = 'png')
       
+      show('curation_tools')
+      
     }
   })
   
   #### pathway name rendering ####
-  output$pathway_name_and_source <- renderText({
-    paste("<font color=\"#1f992f\"><b>", gsub("_", " ", v$pathway_name), "</b></font>")
+  output$collection_and_pathway_names <- renderText({
+    paste("<font color=\"#1f992f\"><b>", "Collection: ", v$collection_name, "<br>", gsub("_", " ", v$pathway_name), "</b></font>")
   })
   
   #### swithcher for highlighting changed items ####
@@ -1146,10 +1290,12 @@ shinyServer(function(input, output, session) {
   # })
   
   observeEvent(input$show_modified_nodes, {
-    v$image_file <- plot_kegg_pathway(graphnel_df = v$graphnel_df, group_graphics = v$pathway$group_nodes, pathway_image = v$pathway_image,
-                                      node_colors = v$node_colors$node_colors, edge_mapping = FALSE, highlight_nodes = v$selected_node_name$node_id, highlight_color = "red",
-                                      col_legend_title = v$node_colors$col_legend_title, color_bar_lims = v$node_colors$color_bar_lims, present_node_modifications = input$show_modified_nodes, removed_nodes = v$pathway$removed_nodes) %>%
-      image_write(tempfile(fileext='png'), format = 'png')
+    if(!is.null(v$graphnel_df)) {
+      v$image_file <- plot_kegg_pathway(graphnel_df = v$graphnel_df, group_graphics = v$pathway$group_nodes, pathway_image = v$pathway_image,
+                                        node_colors = v$node_colors$node_colors, edge_mapping = FALSE, highlight_nodes = v$selected_node_name$node_id, highlight_color = "red",
+                                        col_legend_title = v$node_colors$col_legend_title, color_bar_lims = v$node_colors$color_bar_lims, present_node_modifications = input$show_modified_nodes, removed_nodes = v$pathway$removed_nodes) %>%
+        image_write(tempfile(fileext='png'), format = 'png')
+    }
   })
   
   #### image click events ####
@@ -1279,7 +1425,7 @@ shinyServer(function(input, output, session) {
   #### edge drawing ####
   observeEvent(input$draw_edge, {
     
-    if(v$allow_edge_draw) {
+    if(v$allow_edge_draw & !is.null(v$graphnel_df)) {
       
       if(!is.null(v$node_colors)) {
         
@@ -1299,8 +1445,11 @@ shinyServer(function(input, output, session) {
   })
   
   #### disconnected node(s) checker ####
-  observeEvent(input$check_disconnected_nodes,{
+  observeEvent(input$check_disconnected_nodes, {
     disconnected_nodes <- setdiff(v$graphnel_df$node_table$node_id, unique(c(v$graphnel_df$edge_table$from, v$graphnel_df$edge_table$to)))
+    
+    visNetworkProxy("visnet") %>%
+      visSelectNodes(id = disconnected_nodes, highlightEdges = F)
     
     v$image_file <- plot_kegg_pathway(graphnel_df = v$graphnel_df, group_graphics = v$pathway$group_nodes, pathway_image = v$pathway_image,
                                       node_colors = v$node_colors$node_colors, edge_mapping = FALSE, edge_in_mode = FALSE, highlight_nodes = disconnected_nodes, highlight_color = "red",
@@ -1309,10 +1458,13 @@ shinyServer(function(input, output, session) {
   })
   
   #### duplicated node(s) checker ####
-  observeEvent(input$check_duplicated_nodes,{
+  observeEvent(input$check_duplicated_nodes, {
     duplicated_labels <- v$graphnel_df$node_table$label[which(duplicated(v$graphnel_df$node_table$label))]
     
     duplicated_nodes <- v$graphnel_df$node_table$node_id[which(v$graphnel_df$node_table$label %in% duplicated_labels)]
+    
+    visNetworkProxy("visnet") %>%
+      visSelectNodes(id = duplicated_nodes, highlightEdges = F)
     
     v$image_file <- plot_kegg_pathway(graphnel_df = v$graphnel_df, group_graphics = v$pathway$group_nodes, pathway_image = v$pathway_image,
                                       node_colors = v$node_colors$node_colors, edge_mapping = FALSE, edge_in_mode = FALSE, highlight_nodes = duplicated_nodes, highlight_color = "red",
@@ -1322,37 +1474,40 @@ shinyServer(function(input, output, session) {
   })
   
   #### clear image marks ####
-  observeEvent(c(input$app_mode, input$clear), {
-    removeUI(selector = '#edge_search')
-    hide('edge_search_dialog')
-    hide('add_edge_button')
-    hide('transition_maker_button')
-    hide('edge_delete_button')
-    hide('dir_switch')
-    hide('delete_nodes')
-    hide('edit_edge')
-    show('add_new_node')
-    hide('edge_panel')
-    hide('edge_creating_panel')
-    hide("event_node_adding_panel")
-    hide('edge_attr_editing_panel_vis')
-    hide('exp_change_panel')
-    v$allow_edge_draw <- TRUE
-    updateCheckboxInput(session, "event_node_mode", value = FALSE)
-    v$selected_node_name <- setNames(data.frame(matrix(ncol = 3, nrow = 0)), c("node_id", "component_id_s", "label"))
-    v$from_nodes <- NULL
-    
-    v$node_colors <- NULL
-    v$graphnel_df$node_table$expression <- 1
-    v$graphnel_df$node_table$signal <- 1
-    
-    v$image_file <- plot_kegg_pathway(graphnel_df = v$graphnel_df, group_graphics = v$pathway$group_nodes, pathway_image = v$pathway_image,
-                                      node_colors = v$node_colors$node_colors, edge_mapping = FALSE, edge_in_mode = FALSE, highlight_nodes = NULL, highlight_color = "red",
-                                      col_legend_title = v$node_colors$col_legend_title, color_bar_lims = v$node_colors$color_bar_lims, present_node_modifications = input$show_modified_nodes, removed_nodes = v$pathway$removed_nodes) %>%
-      image_write(tempfile(fileext='png'), format = 'png')
-    
-    ### continue from here
-    # v$visnet_list <- visnet_creator(v$graphical_data)
+  ## previous observer activator c(input$app_mode, input$clear)
+  observeEvent(input$clear, {
+    if(!is.null(v$graphnel_df)) {
+      removeUI(selector = '#edge_search')
+      hide('edge_search_dialog')
+      hide('add_edge_button')
+      hide('transition_maker_button')
+      hide('edge_delete_button')
+      hide('dir_switch')
+      hide('delete_nodes')
+      hide('edit_edge')
+      show('add_new_node')
+      hide('edge_panel')
+      hide('edge_creating_panel')
+      hide("event_node_adding_panel")
+      hide('edge_attr_editing_panel_vis')
+      hide('exp_change_panel')
+      v$allow_edge_draw <- TRUE
+      updateCheckboxInput(session, "event_node_mode", value = FALSE)
+      v$selected_node_name <- setNames(data.frame(matrix(ncol = 3, nrow = 0)), c("node_id", "component_id_s", "label"))
+      v$from_nodes <- NULL
+      
+      v$node_colors <- NULL
+      v$graphnel_df$node_table$expression <- 1
+      v$graphnel_df$node_table$signal <- 1
+      
+      v$image_file <- plot_kegg_pathway(graphnel_df = v$graphnel_df, group_graphics = v$pathway$group_nodes, pathway_image = v$pathway_image,
+                                        node_colors = v$node_colors$node_colors, edge_mapping = FALSE, edge_in_mode = FALSE, highlight_nodes = NULL, highlight_color = "red",
+                                        col_legend_title = v$node_colors$col_legend_title, color_bar_lims = v$node_colors$color_bar_lims, present_node_modifications = input$show_modified_nodes, removed_nodes = v$pathway$removed_nodes) %>%
+        image_write(tempfile(fileext='png'), format = 'png')
+      
+      ### continue from here
+      # v$visnet_list <- visnet_creator(v$graphical_data)
+    }
     
   }, ignoreInit = TRUE)
   
@@ -1463,7 +1618,9 @@ shinyServer(function(input, output, session) {
       
     }
     
-    show('dialog_content')
+    if(!is.null(v$graphnel_df)) {
+      show('dialog_content')
+    }
     
   })
   
@@ -1867,7 +2024,7 @@ shinyServer(function(input, output, session) {
   })
   
   #### make node as a transition node ####
-  observeEvent(input$make_transition,{
+  observeEvent(input$make_transition, {
     
     v$graphnel_df$node_table[v$selected_node_name[,"node_id"],"type"] <- "transition_gene"
     v$graphnel_df$node_table[v$selected_node_name[,"node_id"],"change_info"] <- "class_change"
@@ -1955,9 +2112,7 @@ shinyServer(function(input, output, session) {
                                         col_legend_title = v$node_colors$col_legend_title, color_bar_lims = v$node_colors$color_bar_lims, present_node_modifications = input$show_modified_nodes, removed_nodes = v$pathway$removed_nodes) %>%
         image_write(tempfile(fileext='png'), format = 'png')
       
-      saveRDS(v$pathway, file = paste0("collection_dir/pathways/", v$pathway_name, ".RDS"))
-      
-      updateRadioButtons(session, inputId = "pathway_source_selector", selected = 2)
+      saveRDS(v$pathway, file = paste0("collection_dir/", v$collection_name, "/pathways/", v$pathway_name, ".RDS"))
     }
   }, suspended = F)
   
@@ -1991,19 +2146,20 @@ shinyServer(function(input, output, session) {
         image_write(tempfile(fileext='png'), format = 'png')
       
       
-      saveRDS(v$pathway, file = paste0("collection_dir/pathways/", v$pathway_name, ".RDS"))
+      saveRDS(v$pathway, file = paste0("collection_dir/", v$collection_name, "/pathways/", v$pathway_name, ".RDS"))
     }
   }, suspended = F)
   
   #### download handler for edited all pathways ####
   output$download_collection <- downloadHandler(
     filename = function(){
-      paste0("curated_collection", ".zip")
+      paste0(v$collection_name, ".zip")
     },
     content = function(file) {
-      
-      zip(zipfile = file, files = "collection_dir")
-      
+      work_dir <- getwd()
+      setwd("collection_dir/")
+      zip(zipfile = file, files = v$collection_name)
+      setwd(work_dir)
     }
   )
   
@@ -2019,6 +2175,7 @@ shinyServer(function(input, output, session) {
         
       output$fc_table_load_error <- renderText({paste("<font color=\"#ff0000\"><b>", "Something is wrong with a file", "</b></font>")})
       hide('vis_buttons')
+      hide('pi_and_topology_analysis')
       v$allow_graph_param_update <- FALSE
       
     } else {
@@ -2034,6 +2191,7 @@ shinyServer(function(input, output, session) {
         
         output$fc_table_load_error <- renderText({paste("<font color=\"#ff0000\"><b>", "Something is wrong with a file", "</b></font>")})
         hide('vis_buttons')
+        hide('pi_and_topology_analysis')
         v$allow_graph_param_update <- FALSE
         
       } else {
@@ -2060,7 +2218,7 @@ shinyServer(function(input, output, session) {
                              selected = v$graphical_data$node_coords$gr_name[which(v$graphical_data$node_coords$node_class == "gene")][1], server = TRUE)
         
         show('vis_buttons')
-        
+        show('pi_and_topology_analysis')
         
       }
       
@@ -2275,9 +2433,7 @@ shinyServer(function(input, output, session) {
   
   #### pathway image rendering #### 
   output$pathway_image <- renderImage({
-    
-    return(list(src = v$image_file, contentType = "image/png", alt = "pathway_image"))
-    
+    return(list(src = ifelse(is.null(v$graphnel_df), "", v$image_file), contentType = "image/png", alt = "pathway_image"))
   }, deleteFile = TRUE)
   
   #### sink data plot rendering ####
@@ -2288,44 +2444,48 @@ shinyServer(function(input, output, session) {
   
   #### visnet rendering ####
   output$visnet <- renderVisNetwork({
-    visNetwork(nodes = vis_extract(v$graphnel_df, node_colors = v$node_colors)$node_table, edges = vis_extract(v$graphnel_df)$edge_table, width = "100%", height = "800px") %>% 
-      visIgraphLayout(layout = "layout_nicely") %>% 
-      visInteraction(navigationButtons = TRUE, multiselect = T, keyboard = F, selectConnectedEdges = T) %>%
-      visOptions(manipulation = list(enabled = TRUE, 
-                                     addNode = htmlwidgets::JS("function(data, callback) {
+    
+    if(!is.null(v$graphnel_df)) {
+      visNetwork(nodes = vis_extract(v$graphnel_df, node_colors = v$node_colors)$node_table, edges = vis_extract(v$graphnel_df)$edge_table, width = "100%", height = "800px") %>% 
+        visIgraphLayout(layout = "layout_nicely") %>% 
+        visInteraction(navigationButtons = TRUE, multiselect = T, keyboard = F, selectConnectedEdges = T) %>%
+        visOptions(manipulation = list(enabled = TRUE, 
+                                       addNode = htmlwidgets::JS("function(data, callback) {
                                                                 callback(data);
                                                                 console.info('add_node')
                                                                 Shiny.onInputChange('add_node', {node_data : data});
                                                                 ;}"),
-                                     editNode = htmlwidgets::JS("function(data, callback) {
+                                       editNode = htmlwidgets::JS("function(data, callback) {
                                                                 callback(data);
                                                                 console.info('edit_node')
                                                                 Shiny.onInputChange('edit_node', {edit_node_data : data});
                                                                 ;}"),
-                                     # editEdge = htmlwidgets::JS("function(data, callback) {
-                                     #                            callback(data);
-                                     #                            console.info('vis_edit_edge')
-                                     #                            Shiny.onInputChange('vis_edit_edge', {edit_edge_data : data});
-                                     #                            ;}"),
-                                     editEdge = TRUE,
-                                     deleteNode = TRUE, initiallyActive = TRUE
-      )) %>%
-      visExport() %>%
-      visEvents(click = "function(nodes) {
+                                       # editEdge = htmlwidgets::JS("function(data, callback) {
+                                       #                            callback(data);
+                                       #                            console.info('vis_edit_edge')
+                                       #                            Shiny.onInputChange('vis_edit_edge', {edit_edge_data : data});
+                                       #                            ;}"),
+                                       editEdge = TRUE,
+                                       deleteNode = TRUE, initiallyActive = TRUE
+        ), highlightNearest = T) %>%
+        visExport() %>%
+        visEvents(click = "function(nodes) {
                       console.info('click')
                       console.info(nodes)
                       Shiny.onInputChange('clicked_node', {nodes : nodes.nodes, edges : nodes.edges});
                       ;}"
-                      # , beforeDrawing = "function(ctx) {
-                      #       const image = document.getElementById('scream');
-                      #       const canvasWidth = ctx.canvas.width;
-                      #       const canvasHeight = ctx.canvas.height;
-                      #       
-                      #       var x = -image.width/2;
-                      #       var y = -image.height/2;
-                      # 
-                      #       ctx.drawImage(image, -1014, -1014);}"
-      )
+                  # , beforeDrawing = "function(ctx) {
+                  #       const image = document.getElementById('scream');
+                  #       const canvasWidth = ctx.canvas.width;
+                  #       const canvasHeight = ctx.canvas.height;
+                  #       
+                  #       var x = -image.width/2;
+                  #       var y = -image.height/2;
+                  # 
+                  #       ctx.drawImage(image, -1014, -1014);}"
+        )
+    }
+    
   })
   
   #### visnet editor ###
@@ -2373,6 +2533,8 @@ shinyServer(function(input, output, session) {
     if(!is.null(input$visnet_positions)) {
       v$visnet_coord_ranges <- list(x = range(as.data.frame(do.call(rbind, input$visnet_positions))[,"x"]),
                                     y = range(as.data.frame(do.call(rbind, input$visnet_positions))[,"y"]))
+      v$visnet_coords <- list(x = as.data.frame(do.call(rbind, input$visnet_positions))[,"x"],
+                              y = as.data.frame(do.call(rbind, input$visnet_positions))[,"y"])
     }
   })
   
@@ -2708,7 +2870,24 @@ shinyServer(function(input, output, session) {
     output$partial_inf_err <- NULL
     if(!is.null(unlist(input$clicked_node$nodes)) & input$influence_type != "None") {
       
-      influence_nodes <- calc_node_partial_influences(pathway = v$psf_and_colors$psf_graph[[1]][[v$pathway_name]], influence_node = unlist(input$clicked_node$nodes), influence_direction = input$influence_type)
+      if(input$sample_selection_type == 1) {
+        sample_id = "all"
+      } 
+      if(input$sample_selection_type == 2) {
+        sample_id = input$selected_sample
+      }
+      # for group samples, will finish in the future
+      # if(input$sample_selection_type == 3) {
+      #   sample_id = input$selected_sample
+      # }
+      
+      influence_nodes <- run_pi(pathway = v$pathway_psf[[v$pathway_name]], unlist(input$clicked_node$nodes), influence_direction = input$influence_type, sample_id = sample_id, node_combinations = 1, get_influence_matrix = FALSE, ncores = 4)
+      
+      if(length(sample_id) > 1) {
+        influence_nodes <- influence_nodes$mean_influence_params$node_id
+      } else {
+        influence_nodes <- influence_nodes$ordered_influence_nodes[,1]
+      }
       
       if(input$influence_node_num == "all") {
         influence_nodes <- influence_nodes
@@ -2718,12 +2897,18 @@ shinyServer(function(input, output, session) {
         }
       }
       
-      v$visnet_list$nodes <- visnet_creator(v$graphical_data, node_colors = v$psf_and_colors$psf_colors, col_legend_title = v$col_legend_title, color_bar_lims = v$color_bar_lims)$nodes
+      vis_node_table <- vis_extract(v$graphnel_df, node_colors = v$node_colors)$node_table
       
-      
-      v$visnet_list$nodes[unlist(input$clicked_node$nodes),"font.color"] <- "#ff0000"
+      vis_node_table[unlist(input$clicked_node$nodes),"font.color"] <- "#ff0000"
       # new_node_data[names(influence_nodes),"size"] <- 30
-      v$visnet_list$nodes[names(influence_nodes),"label"] <- paste(1:length(influence_nodes), "\n", v$visnet_list$nodes[names(influence_nodes),"label"])
+      vis_node_table[influence_nodes,"label"] <- paste(1:length(influence_nodes), "\n", vis_node_table[influence_nodes,"label"])
+      
+      ### update coordinates to be in visnet scale
+      vis_node_table[,"x"] <- unlist(v$visnet_coords$x)
+      vis_node_table[,"y"] <- unlist(v$visnet_coords$y)
+      
+      visNetworkProxy("visnet") %>%
+        visUpdateNodes(vis_node_table)
       
     } else {
       output$partial_inf_err <- renderText({paste("<font color=\"#ff0000\"><b>", "Select network node and influence type", "</b></font>")})
@@ -2731,12 +2916,45 @@ shinyServer(function(input, output, session) {
     
   })
   
-  # observeEvent(input$influence_type, {
-  #   if(input$influence_type == "None") {
-  #     v$visnet_list$nodes <- visnet_creator(v$graphical_data, node_colors = v$psf_and_colors$psf_colors, col_legend_title = v$col_legend_title, color_bar_lims = v$color_bar_lims)$nodes
-  #     # v$visnet_list$nodes$label <- unlist(strsplit(v$visnet_list$nodes$label, split = "\n"))[length(unlist(strsplit(v$visnet_list$nodes$label, split = "\n")))]
-  #   }
-  # })
+  observeEvent(input$show_drug_interactions, {
+    
+    if(!is.null(unlist(input$clicked_node$nodes))) {
+      selected_gene_nodes <- unlist(input$clicked_node$nodes)[which(v$graphnel_df$node_table[unlist(input$clicked_node$nodes), "type"] == "gene")]
+      entrez_ids <- unique(sapply(v$graphnel_df$node_table[selected_gene_nodes,"component_id_s"], function(x) {unlist(strsplit(x, split = ","))}))
+      v$drug_table <- protein_drug_interactions[entrez_id %in% entrez_ids]
+      
+    } else {
+      entrez_ids <- unique(sapply(v$graphnel_df$node_table[which(v$graphnel_df$node_table$type == "gene"),"component_id_s"], function(x) {unlist(strsplit(x, split = ","))}))
+      v$drug_table <- protein_drug_interactions[entrez_id %in% entrez_ids]
+    }
+    
+    show('drug_table')
+    
+  })
+  
+  observeEvent(input$close_drag_table, {
+    v$searching_state <- FALSE
+    hide('drug_table')
+  })
+  
+  #### drug table output ####
+  output$drug_data_table <- DT::renderDataTable({datatable(
+    v$drug_table[,c("gene_name", "interaction_claim_source", "interaction_types", "drug_name", "drug_concept_id", "interaction_group_score", "PMIDs")],
+    filter = 'bottom',
+    class   = 'cell-border compact hover',
+    fillContainer = T,
+    escape = F,
+    selection = list(mode = 'single'),
+    options = list(dom = 'rtp',
+                   pageLength = 100,
+                   searchHighlight = TRUE,
+                   initComplete = JS("function(settings, json) {",
+                                     "$(this.api().table().header()).css({'background-color': '#3474B7', 'color': '#fff'});",
+                                     "}"),
+                   scrollY = 250,scrollX = TRUE
+    ),
+    style = 'bootstrap', editable = FALSE)
+  })
   
   #### visnet search ####
   observeEvent(input$search_go, {
