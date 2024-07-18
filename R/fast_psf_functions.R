@@ -596,7 +596,7 @@ run_pi <- function(pathway, influenced_node, influence_direction = "any", sample
 #' @param plot_layout layout type of the pathway. Only works in visnet plot_type. Default value is NULL. Available values c("layout_nicely").
 #' @param color_nodes type of node values to be visualized. When value type is specified pathway nodes will be color coded with expression FC values or PSF values and color legend will be added to the pathway plot. Possible values are c(NULL, "psf_activities", "exp_fc"). Default value is NULL.
 #' @param multi_color_nodes when set to true nodes of the pathway will be colored with multiple colors based on the provided sample vector or groups (maximum number is 4). Available only for the kegg visualization.
-#' @param sample_id name of the sample which will be used to visualize psf or exp fc values on pathway. To get averaged values across samples set value to "mean". Default value is "mean". 
+#' @param sample_id name of the sample which will be used to visualize psf or exp fc values on pathway. To get averaged values across samples, set value to "mean". Default value is "mean". 
 #' @param col_data sample information for calculated PSF activities. A data.frame with two columns, first column are sample ids (colnames of PSF activity matrix), second column group names. Default value is NULL. When data.frame with group information is provided plot_pathway will generate boxplots of sink values for each group in the righ side of the pathway.
 #' @param log_norm log transform PSF and expression values before color mapping. Default value is TRUE.
 #' @param highlight_nodes single value of node id or a vector of ids to be highlighted in plotted pathway. Default value is NULL.
@@ -681,10 +681,18 @@ plot_pathway <- function(pathway, plot_type = "visnet", plot_layout = NULL,
       }
     }
     
+    
     if(log_norm) {
-      pathway_exp_values <- round(log(drop(pathway_exp_values)[order(drop(pathway_exp_values))] + 0.00001), digits = 5)
-      pathway_psf_values <- round(log(drop(pathway_psf_values)[order(drop(pathway_psf_values))] + 0.00001), digits = 5)
+      if(any(drop(pathway_psf_values) < 0)) {
+        print("Negative values are detected skipping log transformation")
+      } else {
+        pathway_exp_values <- round(log(drop(pathway_exp_values)[order(drop(pathway_exp_values))] + 0.00001), digits = 5)
+        pathway_psf_values <- round(log(drop(pathway_psf_values)[order(drop(pathway_psf_values))] + 0.00001), digits = 5)
+      }
     } else {
+      if(any(drop(pathway_psf_values) < 0)) {
+        log_norm <- TRUE
+      }
       pathway_exp_values <- round(drop(pathway_exp_values)[order(drop(pathway_exp_values))], digits = 5)
       pathway_psf_values <- round(drop(pathway_psf_values)[order(drop(pathway_psf_values))], digits = 5)
     }
@@ -887,7 +895,9 @@ plot_pathway <- function(pathway, plot_type = "visnet", plot_layout = NULL,
         names(psf_activities_vec) <- rep(pathway$sink.nodes, ncol(pathway$psf_activities))
         
         if(log_norm) {
-          psf_activities_vec <- log(psf_activities_vec)
+          if(!any(drop(pathway_psf_values) < 0)) {
+            psf_activities_vec <- log(psf_activities_vec)
+          }
         }
         
         psf_activity_order <- order(psf_activities_vec)

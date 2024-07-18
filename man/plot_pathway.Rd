@@ -32,7 +32,7 @@ plot_pathway(
 
 \item{multi_color_nodes}{when set to true nodes of the pathway will be colored with multiple colors based on the provided sample vector or groups (maximum number is 4). Available only for the kegg visualization.}
 
-\item{sample_id}{name of the sample which will be used to visualize psf or exp fc values on pathway. To get averaged values across samples set value to "mean". Default value is "mean".}
+\item{sample_id}{name of the sample which will be used to visualize psf or exp fc values on pathway. To get averaged values across samples, set value to "mean". Default value is "mean".}
 
 \item{col_data}{sample information for calculated PSF activities. A data.frame with two columns, first column are sample ids (colnames of PSF activity matrix), second column group names. Default value is NULL. When data.frame with group information is provided plot_pathway will generate boxplots of sink values for each group in the righ side of the pathway.}
 
