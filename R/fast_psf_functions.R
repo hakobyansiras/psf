@@ -1435,3 +1435,11 @@ df_to_graphnel <- function(node_table, edge_table) {
   return(pathway)
   
 }
+
+#' Returns vector of node ids which do not have incoming edges but only outgoing.
+#' @param pathway pathway list object generated with package.
+#' @export
+determine.input.nodes <- function(pathway) {
+  dfs <- graphnel_to_df(pathway)
+  return(setdiff(dfs$edge_table$from, dfs$edge_table$to))
+}

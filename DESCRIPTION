@@ -24,6 +24,8 @@ Imports:
         plotly,
         data.table,
         shinyjs,
+        shinyBS,
+        shinyhelper,
         visNetwork,
         shinyjqui,
         ggplot2,
