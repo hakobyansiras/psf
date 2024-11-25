@@ -483,7 +483,7 @@ run_pi <- function(pathway, influenced_node, influence_direction = "any", sample
     stop("Please provide pathway with evaluated activity")
   }
   
-  if(!(influenced_node %in% rownames(pathway$psf_activities))) {
+  if(!all(influenced_node %in% rownames(pathway$psf_activities))) {
     stop("Specified id for influenced node(s) does not exist in the pathway")
   }
   
