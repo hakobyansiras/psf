@@ -826,13 +826,13 @@ plot_pathway <- function(pathway, plot_type = "visnet", plot_layout = NULL,
       }
     }
     
-    
-    
     ### adding sink node labels
-    graphics::text(x = node_graphics[node_graphics$sink,"x_end"] + 10,
-                   y = node_graphics[node_graphics$sink,"y"] - 30 + y_adj_sink, cex = 3,
-                   labels = rep("*", sum(node_graphics$sink)),
-                   col = rep("#9ACD32", sum(node_graphics$sink)), adj = c(0,0.2) + c(0.48, 1))
+    if(length(node_graphics$sink) > 0) {
+      graphics::text(x = node_graphics[node_graphics$sink,"x_end"] + 10,
+                     y = node_graphics[node_graphics$sink,"y"] - 30 + y_adj_sink, cex = 3,
+                     labels = rep("*", sum(node_graphics$sink)),
+                     col = rep("#9ACD32", sum(node_graphics$sink)), adj = c(0,0.2) + c(0.48, 1))
+    }
     
     if(!is.null(highlight_nodes)) {
       highlight_set <- node_graphics[which(node_graphics[,"node_id"] %in% highlight_nodes),]
@@ -1187,13 +1187,11 @@ generate_psf_report <- function(psf_list, folder_name, plot_type = "kegg", log_n
 #' @export
 graphnel_to_df <- function(pathway, extended = FALSE) {
   
-  if(length(pathway$graph@edgeData@data) == 0) {
-    stop("Please provide a pathway with at lease one edge")
+  if(length(pathway$graph@edgeData@data) > 0) {
+    splitted_interactions <- strsplit(names(pathway$graph@edgeData@data), split = "|", fixed = T)
+    from <- as.character(sapply(splitted_interactions, "[[", 1))
+    to <- as.character(sapply(splitted_interactions, "[[", 2))
   }
-  
-  splitted_interactions <- strsplit(names(pathway$graph@edgeData@data), split = "|", fixed = T)
-  from <- as.character(sapply(splitted_interactions, "[[", 1))
-  to <- as.character(sapply(splitted_interactions, "[[", 2))
   
   if(any(grepl("kegg", names(graph::nodeDataDefaults(pathway$graph))))) {
     attribute_converter <- setNames(nm = c("kegg.id", "kegg.gr.x", "kegg.gr.y", "kegg.gr.width", "kegg.gr.height"), object = c("kegg.id", "kegg.gr.x", "kegg.gr.y", "kegg.gr.width", "kegg.gr.height"))
@@ -1301,24 +1299,29 @@ graphnel_to_df <- function(pathway, extended = FALSE) {
     line_col <- c("red", "red", "red", "red", "blue","red", "red", "red", "blue", "red", "red", "red", "red", "blue", "red", "red")
     names(line_col) <- c("activation", "binding/association", "compound", "dephosphorylation", "dissociation", "expression", "glycosylation", "indirect effect", "inhibition", "missing interaction", "n/a", "phosphorylation", "reaction", "repression", "state change", "ubiquitination" )
     
-    edge_table <- data.frame(id = paste0(from, "|", to),
-                             from = from,
-                             to = to,
-                             color = line_col[unname(unlist(graph::edgeData(pathway$graph, from = from, to = to,attr = "subtype1")))],
-                             arrows.to.enabled = TRUE,
-                             arrows.to.type = kegg_arrows_type[unname(unlist(graph::edgeData(pathway$graph, from = from, to = to,attr = "subtype1")))],
-                             label = "",
-                             dashes = unname(unlist(graph::edgeData(pathway$graph, from = from, to = to,attr = "subtype2"))) == "indirect effect" | unname(unlist(graph::edgeData(pathway$graph, from = from, to = to,attr = "subtype1"))) == "indirect effect",
-                             type = unlist(graph::edgeData(pathway$graph, from = from, to = to, attr = "type")),
-                             subtype1 = unlist(graph::edgeData(pathway$graph, from = from, to = to, attr = "subtype1")),
-                             subtype2 = unlist(graph::edgeData(pathway$graph, from = from, to = to, attr = "subtype2")),
-                             state = "",
-                             weight = unlist(graph::edgeData(pathway$graph, from = from, to = to, attr = "weight")),
-                             existence = "exist",
-                             change_info = "no_change",
-                             data_source = "kegg",
-                             stringsAsFactors = F
-    )
+    if(length(pathway$graph@edgeData@data) > 0) {
+      edge_table <- data.frame(id = paste0(from, "|", to),
+                               from = from,
+                               to = to,
+                               color = line_col[unname(unlist(graph::edgeData(pathway$graph, from = from, to = to,attr = "subtype1")))],
+                               arrows.to.enabled = TRUE,
+                               arrows.to.type = kegg_arrows_type[unname(unlist(graph::edgeData(pathway$graph, from = from, to = to,attr = "subtype1")))],
+                               label = "",
+                               dashes = unname(unlist(graph::edgeData(pathway$graph, from = from, to = to,attr = "subtype2"))) == "indirect effect" | unname(unlist(graph::edgeData(pathway$graph, from = from, to = to,attr = "subtype1"))) == "indirect effect",
+                               type = unlist(graph::edgeData(pathway$graph, from = from, to = to, attr = "type")),
+                               subtype1 = unlist(graph::edgeData(pathway$graph, from = from, to = to, attr = "subtype1")),
+                               subtype2 = unlist(graph::edgeData(pathway$graph, from = from, to = to, attr = "subtype2")),
+                               state = "",
+                               weight = unlist(graph::edgeData(pathway$graph, from = from, to = to, attr = "weight")),
+                               existence = "exist",
+                               change_info = "no_change",
+                               data_source = "kegg",
+                               stringsAsFactors = F
+      )
+    } else {
+      edge_table <- NULL
+    }
+    
     
   } else {
     
@@ -1341,15 +1344,20 @@ graphnel_to_df <- function(pathway, extended = FALSE) {
                              stringsAsFactors = F
     )
     
-    edge_table <- data.frame(from = from,
-                             to = to,
-                             type = unlist(graph::edgeData(pathway$graph, from = from, to = to, attr = "type")),
-                             subtype1 = unlist(graph::edgeData(pathway$graph, from = from, to = to, attr = "subtype1")),
-                             subtype2 = unlist(graph::edgeData(pathway$graph, from = from, to = to, attr = "subtype2")),
-                             state = "",
-                             weight = unlist(graph::edgeData(pathway$graph, from = from, to = to, attr = "weight")),
-                             stringsAsFactors = F
-    )
+    if(length(pathway$graph@edgeData@data) > 0) {
+      edge_table <- data.frame(from = from,
+                               to = to,
+                               type = unlist(graph::edgeData(pathway$graph, from = from, to = to, attr = "type")),
+                               subtype1 = unlist(graph::edgeData(pathway$graph, from = from, to = to, attr = "subtype1")),
+                               subtype2 = unlist(graph::edgeData(pathway$graph, from = from, to = to, attr = "subtype2")),
+                               state = "",
+                               weight = unlist(graph::edgeData(pathway$graph, from = from, to = to, attr = "weight")),
+                               stringsAsFactors = F
+      )
+    } else {
+      edge_table <- NULL  
+    }
+    
     
   }
   
