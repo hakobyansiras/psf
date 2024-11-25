@@ -827,7 +827,7 @@ plot_pathway <- function(pathway, plot_type = "visnet", plot_layout = NULL,
     }
     
     ### adding sink node labels
-    if(length(node_graphics$sink) > 0) {
+    if(sum(node_graphics$sink) > 0) {
       graphics::text(x = node_graphics[node_graphics$sink,"x_end"] + 10,
                      y = node_graphics[node_graphics$sink,"y"] - 30 + y_adj_sink, cex = 3,
                      labels = rep("*", sum(node_graphics$sink)),
