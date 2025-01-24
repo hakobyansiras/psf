@@ -596,7 +596,7 @@ run_pi <- function(pathway, influenced_node, influence_direction = "any", sample
 #' @param plot_layout layout type of the pathway. Only works in visnet plot_type. Default value is NULL. Available values c("layout_nicely").
 #' @param color_nodes type of node values to be visualized. When value type is specified pathway nodes will be color coded with expression FC values or PSF values and color legend will be added to the pathway plot. Possible values are c(NULL, "psf_activities", "exp_fc"). Default value is NULL.
 #' @param multi_color_nodes when set to true nodes of the pathway will be colored with multiple colors based on the provided sample vector or groups (maximum number is 4). Available only for the kegg visualization.
-#' @param sample_id name of the sample which will be used to visualize psf or exp fc values on pathway. To get averaged values across samples, set value to "mean". Default value is "mean". 
+#' @param sample_id name or character vector of the samples which will be used to visualize psf or exp fc values on pathway. To get averaged values across all samples, set value to "mean". Default value is "mean". 
 #' @param col_data sample information for calculated PSF activities. A data.frame with two columns, first column are sample ids (colnames of PSF activity matrix), second column group names. Default value is NULL. When data.frame with group information is provided plot_pathway will generate boxplots of sink values for each group in the righ side of the pathway.
 #' @param log_norm log transform PSF and expression values before color mapping. Default value is TRUE.
 #' @param highlight_nodes single value of node id or a vector of ids to be highlighted in plotted pathway. Default value is NULL.
@@ -672,12 +672,24 @@ plot_pathway <- function(pathway, plot_type = "visnet", plot_layout = NULL,
       
       
     } else {
-      if(sample_id == "mean") {
-        pathway_exp_values <- rowMeans(pathway$exp_fc)
-        pathway_psf_values <- rowMeans(pathway$psf_activities)
+      if(length(sample_id) == 1) {
+        if(sample_id == "mean") {
+          pathway_exp_values <- rowMeans(pathway$exp_fc)
+          pathway_psf_values <- rowMeans(pathway$psf_activities)
+        } else {
+          if(!(sample_id %in% colnames(pathway$psf_activities))) {
+            stop("Provided sample Ids must match with sample names of pathway activity results")
+          }
+          pathway_exp_values <- rowMeans(pathway$exp_fc[,sample_id,drop=F])
+          pathway_psf_values <- rowMeans(pathway$psf_activities[,sample_id,drop=F])
+        }
+        
       } else {
-        pathway_exp_values <- pathway$exp_fc[,sample_id]
-        pathway_psf_values <- pathway$psf_activities[,sample_id]
+        if(!all(sample_id %in% colnames(pathway$psf_activities))) {
+          stop("Provided sample Ids must match with sample names of pathway activity results")
+        }
+        pathway_exp_values <- rowMeans(pathway$exp_fc[,sample_id,drop=F])
+        pathway_psf_values <- rowMeans(pathway$psf_activities[,sample_id,drop=F])
       }
     }
     
