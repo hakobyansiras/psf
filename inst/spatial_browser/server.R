@@ -83,11 +83,11 @@ plot_kegg_pathway <- function(graphnel_df, group_graphics, pathway_image,
   ### scale color bar
   if(!is.null(node_colors)) {
     if(is.null(custom_color_scale)) {
-      psf:::color_legend_maker(x = magick::image_info(img)$width - 230, y = 50, leg = 200, cols = c(psf:::pal1(10), psf:::pal2(10)), title = col_legend_title, lims = color_bar_lims, digits=3, prompt=FALSE,
-                               lwd=4, outline=TRUE, subtitle = "", fsize = 1.3)
+      color_legend_maker(x = magick::image_info(img)$width - 230, y = 50, leg = 200, cols = c(psf:::pal1(10), psf:::pal2(10)), title = col_legend_title, lims = color_bar_lims, digits=3, prompt=FALSE,
+                         lwd=4, outline=TRUE, subtitle = "", fsize = 1.3)
     } else {
-      psf:::color_legend_maker(x = magick::image_info(img)$width - 230, y = 50, leg = 200, cols = c(custom_color_scale[1:50], custom_color_scale[51:100]), title = col_legend_title, lims = color_bar_lims, digits=3, prompt=FALSE,
-                               lwd=4, outline=TRUE, subtitle = "", fsize = 1.3)
+      color_legend_maker(x = magick::image_info(img)$width - 230, y = 50, leg = 200, cols = c(custom_color_scale[1:50], custom_color_scale[51:100]), title = col_legend_title, lims = color_bar_lims, digits=3, prompt=FALSE,
+                         lwd=4, outline=TRUE, subtitle = "", fsize = 1.3)
     }
   }
   
@@ -247,7 +247,7 @@ node_color_generator <- function(pathway, sample_id = "mean", log_norm = TRUE, c
     }
     
     if(is.null(custom_color_scale)) {
-      node_colors <- psf:::color_code(values = pathway_node_values, pal1 = psf:::pal1, pal2 = psf:::pal2, log_scale = log_norm)
+      node_colors <- color_code(values = pathway_node_values, pal1 = pal1, pal2 = pal2, log_scale = log_norm)
       
       node_colors <- data.frame(node_id = names(pathway_node_values)[c(which(pathway_node_values <= 0), which(pathway_node_values > 0))], 
                                 col = node_colors,
@@ -321,10 +321,10 @@ vis_extract <- function(vis_table, node_colors = NULL, higlight_node = NULL, cus
     plot.new()
     
     if(is.null(custom_color_scale)) {
-      psf:::color_legend_maker(x = 0.05, y = 0, leg = 0.9, cols = c(psf:::pal1(10), psf:::pal2(10)), title = node_colors$col_legend_title, lims = node_colors$color_bar_lims, digits=3, prompt=FALSE,
+      color_legend_maker(x = 0.05, y = 0, leg = 0.9, cols = c(psf:::pal1(10), psf:::pal2(10)), title = node_colors$col_legend_title, lims = node_colors$color_bar_lims, digits=3, prompt=FALSE,
                                lwd=4, outline=TRUE, subtitle = "", fsize = 1.3)
     } else {
-      psf:::color_legend_maker(x = 0.05, y = 0, leg = 0.9, cols = c(custom_color_scale[1:50], custom_color_scale[51:100]), title = node_colors$col_legend_title, lims = node_colors$color_bar_lims, digits=3, prompt=FALSE,
+      color_legend_maker(x = 0.05, y = 0, leg = 0.9, cols = c(custom_color_scale[1:50], custom_color_scale[51:100]), title = node_colors$col_legend_title, lims = node_colors$color_bar_lims, digits=3, prompt=FALSE,
                                lwd=4, outline=TRUE, subtitle = "", fsize = 1.3)
     }
     
