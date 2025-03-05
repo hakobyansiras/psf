@@ -1857,8 +1857,12 @@ spatial_psf_analysis <- function(spatial_obj, pathway_collection, gene_symbol_to
 #' @importFrom "plotly" "plot_ly"
 #' @importFrom "plotly" "layout"
 #' @importFrom "plotly" "plotlyOutput"
+#' @importFrom "plotly" "renderPlotly"
+#' @importFrom "plotly" "config"
 #' @importFrom "magick" "image_read"
 #' @import visNetwork
+#' @import shiny
+#' @import shinyjs
 #' @export
 run_psf_spatial_browser <- function(psf_saptial_results) {
   
@@ -2399,14 +2403,14 @@ run_psf_spatial_browser <- function(psf_saptial_results) {
                ),
                tabPanel("Help",
                         tabsetPanel(
-                          tabPanel("Welcome", includeMarkdown(system.file('help_pages/welcome.md', package='psf'))),
+                          tabPanel("Welcome", includeMarkdown(system.file('spatial_browser/help_pages/welcome.md', package='psf'))),
                           # tabPanel("Getting Started", includeMarkdown("help_pages/getting_started.md")),
-                          tabPanel("User Interface Guide", includeMarkdown(system.file('help_pages/ui_guide.md', package='psf'))),
+                          tabPanel("User Interface Guide", includeMarkdown(system.file('spatial_browser/help_pages/ui_guide.md', package='psf'))),
                           # tabPanel("Features", includeMarkdown("help_pages/features.md")),
-                          tabPanel("Use Case", includeMarkdown(system.file('help_pages/use_case.md', package='psf'))),
-                          tabPanel("FAQ & Troubleshooting", includeMarkdown(system.file('help_pages/faq.md', package='psf'))),
-                          tabPanel("Resources", includeMarkdown(system.file('help_pages/resources.md', package='psf'))),
-                          tabPanel("Contact", includeMarkdown(system.file('help_pages/contact.md', package='psf') ))
+                          tabPanel("Use Case", includeMarkdown(system.file('spatial_browser/help_pages/use_case.md', package='psf'))),
+                          tabPanel("FAQ & Troubleshooting", includeMarkdown(system.file('spatial_browser/help_pages/faq.md', package='psf'))),
+                          tabPanel("Resources", includeMarkdown(system.file('spatial_browser/help_pages/resources.md', package='psf'))),
+                          tabPanel("Contact", includeMarkdown(system.file('spatial_browser/help_pages/contact.md', package='psf') ))
                         )
                )
     )
