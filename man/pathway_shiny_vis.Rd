@@ -4,10 +4,12 @@
 \alias{pathway_shiny_vis}
 \title{Run KEGG interactive visualization App for provided pathway}
 \usage{
-pathway_shiny_vis(pathway)
+pathway_shiny_vis(pathway, port = 3838)
 }
 \arguments{
 \item{pathway}{list object}
+
+\item{port}{The TCP port that the application should listen on. Default value is 3838}
 }
 \value{
 Nothing is returned

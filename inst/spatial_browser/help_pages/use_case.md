@@ -80,23 +80,23 @@ Once the app launches, you can begin exploring the analysis results interactivel
 
 Cluster 3 in this dataset displays distinct features and appears to be localized in a specific tissue area. Select this cluster using the "Select Cluster" widget. After selecting Cluster 3, the cluster spots are highlighted on the spatial plot.
 
-![Cluster Selection Screenshot](inst/spatial_browser/help_pages/screen_shots/cluster_selection.png)
+![Cluster Selection Screenshot](screen_shots/cluster_selection.png)
 
 ### Visualizing cluster specific features
 
 When cluster is selected feature selction widget will be updated to include cluster assoicated significant features. To visualize pathway activity of those, select a feature, such as the terminal node BIRC2 in the Hippo signaling pathway. The Hippo pathway is known to regulate organ growth and cell fate.
 
-![Feature Selection Screenshot](inst/spatial_browser/help_pages/screen_shots/feature_selection.png)
+![Feature Selection Screenshot](screen_shots/feature_selection.png)
 
 Afte selecting the feature the pathway network is rendered, with BIRC2 highlighted in green, and color-coded activity values of BIRC2 gene are displayed on the spatial plot.
 
-![Pathway Network Screenshot](inst/spatial_browser/help_pages/screen_shots/feature_vis.png)
+![Pathway Network Screenshot](screen_shots/feature_vis.png)
 
 ### Pathway node selection
 
 By examining the color-coded pathway nodes, you can observe the high activity of YAP1 gene. This gene plays a key role in this pathway and is associated with melanoma cell invasion and metastasis. Double-clicking on the nod of YAP1 gene will render its activity on the spatial plot.
 
-![YAP1 Visualization Screenshot](inst/spatial_browser/help_pages/screen_shots/yap1_plot.png)
+![YAP1 Visualization Screenshot](screen_shots/yap1_plot.png)
 
 The spatial plot reveals that YAP1 activity is elevated in Cluster 3.
 
@@ -104,9 +104,9 @@ The spatial plot reveals that YAP1 activity is elevated in Cluster 3.
 
 Select specific spot or group of spots using the box or lasso selection tools to visalize mean activity values of slected pathway.
 
-![Spot Selection Widgets Screenshot](inst/spatial_browser/help_pages/screen_shots/spot_selection_widgets.png)
+![Spot Selection Widgets Screenshot](screen_shots/spot_selection_widgets.png)
 
-![Selected Spots Visualization Screenshot](inst/spatial_browser/help_pages/screen_shots/spatial_selection.png)
+![Selected Spots Visualization Screenshot](screen_shots/spatial_selection.png)
 
 The selected spots' mean activity is visualized on the pathway network.
 

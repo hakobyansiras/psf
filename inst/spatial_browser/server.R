@@ -10,7 +10,7 @@ library(shinyjs)
 library(visNetwork)
 library(plotly)
 
-load("melanoma_spatial_demo_data.RData")
+# load("melanoma_spatial_demo_data.RData")
 
 psf_subset <- function(psf_collection, pathway_name, sample_list) {
   
@@ -83,10 +83,10 @@ plot_kegg_pathway <- function(graphnel_df, group_graphics, pathway_image,
   ### scale color bar
   if(!is.null(node_colors)) {
     if(is.null(custom_color_scale)) {
-      color_legend_maker(x = magick::image_info(img)$width - 230, y = 50, leg = 200, cols = c(psf:::pal1(10), psf:::pal2(10)), title = col_legend_title, lims = color_bar_lims, digits=3, prompt=FALSE,
+      psf:::color_legend_maker(x = magick::image_info(img)$width - 230, y = 50, leg = 200, cols = c(psf:::pal1(10), psf:::pal2(10)), title = col_legend_title, lims = color_bar_lims, digits=3, prompt=FALSE,
                          lwd=4, outline=TRUE, subtitle = "", fsize = 1.3)
     } else {
-      color_legend_maker(x = magick::image_info(img)$width - 230, y = 50, leg = 200, cols = c(custom_color_scale[1:50], custom_color_scale[51:100]), title = col_legend_title, lims = color_bar_lims, digits=3, prompt=FALSE,
+      psf:::color_legend_maker(x = magick::image_info(img)$width - 230, y = 50, leg = 200, cols = c(custom_color_scale[1:50], custom_color_scale[51:100]), title = col_legend_title, lims = color_bar_lims, digits=3, prompt=FALSE,
                          lwd=4, outline=TRUE, subtitle = "", fsize = 1.3)
     }
   }
@@ -321,10 +321,10 @@ vis_extract <- function(vis_table, node_colors = NULL, higlight_node = NULL, cus
     plot.new()
     
     if(is.null(custom_color_scale)) {
-      color_legend_maker(x = 0.05, y = 0, leg = 0.9, cols = c(psf:::pal1(10), psf:::pal2(10)), title = node_colors$col_legend_title, lims = node_colors$color_bar_lims, digits=3, prompt=FALSE,
+      psf:::color_legend_maker(x = 0.05, y = 0, leg = 0.9, cols = c(psf:::pal1(10), psf:::pal2(10)), title = node_colors$col_legend_title, lims = node_colors$color_bar_lims, digits=3, prompt=FALSE,
                                lwd=4, outline=TRUE, subtitle = "", fsize = 1.3)
     } else {
-      color_legend_maker(x = 0.05, y = 0, leg = 0.9, cols = c(custom_color_scale[1:50], custom_color_scale[51:100]), title = node_colors$col_legend_title, lims = node_colors$color_bar_lims, digits=3, prompt=FALSE,
+      psf:::color_legend_maker(x = 0.05, y = 0, leg = 0.9, cols = c(custom_color_scale[1:50], custom_color_scale[51:100]), title = node_colors$col_legend_title, lims = node_colors$color_bar_lims, digits=3, prompt=FALSE,
                                lwd=4, outline=TRUE, subtitle = "", fsize = 1.3)
     }
     
@@ -384,7 +384,19 @@ vis_extract <- function(vis_table, node_colors = NULL, higlight_node = NULL, cus
   return(list(node_table = node_table, edge_table = edge_table))
 }
 
-sink_name_to_id <- setNames(object = rownames(kegg_sink_to_process), nm = paste0(kegg_sink_to_process$Pathway_name, "->", kegg_sink_to_process$Sink))
+psf_saptial_results <- getShinyOption("psf_saptial_results")
+
+if("image" %in% names(psf_saptial_results$spatial_psf_collection[[1]]$attrs)) {
+  load(system.file("extdata", "kegg_sink_to_process.RData", package="psf"))
+  sink_name_to_id <- setNames(object = rownames(kegg_sink_to_process), nm = paste0(kegg_sink_to_process$Pathway_name, "->", kegg_sink_to_process$Sink)) 
+} else {
+  sink_name_to_id <- unlist(lapply(names(psf_saptial_results$spatial_psf_collection), function(x) {
+    setNames(object = paste0(psf_saptial_results$spatial_psf_collection[[x]]$sink.nodes, "; ", x), 
+             nm = paste0(x, "->", unlist(graph::nodeData(psf_saptial_results$spatial_psf_collection[[x]]$graph, 
+                                                         psf_saptial_results$spatial_psf_collection[[x]]$sink.nodes, attr = "label")))
+    )
+  }))
+}
 
 # Your existing code for data preparation
 # Extract the spatial image (stored as an array)
@@ -417,6 +429,7 @@ y_max_image <- nrow(spatial_image)
 
 # Convert spot_groups to character for consistency
 spot_groups <- as.character(spot_groups)
+
 
 server <- function(input, output, session) {
   # Reactive values
