@@ -1844,6 +1844,7 @@ spatial_psf_analysis <- function(spatial_obj, pathway_collection, gene_symbol_to
 #' @param feature If feature is provided spots of the tissue slice will be color coded by feature values.
 #' @param group group variable from meta.data object based on which spots will be colored. Default values is "seurat_clusters".
 #' @param log_norm log transform spot values before color mapping. Default value is TRUE.
+#' @import plotly
 #' @export
 interactive_spatial_plot <- function(seurat_object, feature = NULL, group = "seurat_clusters", log_norm = T) {
   
