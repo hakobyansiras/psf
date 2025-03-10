@@ -608,7 +608,12 @@ run_pi <- function(pathway, influenced_node, influence_direction = "any", sample
 #' @import graph
 #' @import ggplot2
 #' @import visNetwork
+#' @importFrom "graphics" "rect"
+#' @importFrom "graphics" "text"
+#' @importFrom "graphics" "plot.new"
 #' @importFrom "RCurl" "base64Encode"
+#' @importFrom "utils" "download.file"
+#' @importFrom "stats" "setNames"
 #' @export
 plot_pathway <- function(pathway, plot_type = "visnet", plot_layout = NULL,
                          color_nodes = NULL, multi_color_nodes = FALSE, sample_id = "mean", col_data = NULL, log_norm = T, 
@@ -1844,7 +1849,9 @@ spatial_psf_analysis <- function(spatial_obj, pathway_collection, gene_symbol_to
 #' @param feature If feature is provided spots of the tissue slice will be color coded by feature values.
 #' @param group group variable from meta.data object based on which spots will be colored. Default values is "seurat_clusters".
 #' @param log_norm log transform spot values before color mapping. Default value is TRUE.
-#' @import plotly
+#' @importFrom "plotly" "plot_ly"
+#' @importFrom "plotly" "layout"
+#' @importFrom "plotly" "config"
 #' @export
 interactive_spatial_plot <- function(seurat_object, feature = NULL, group = "seurat_clusters", log_norm = T) {
   

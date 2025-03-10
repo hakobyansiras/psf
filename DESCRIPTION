@@ -36,9 +36,7 @@ Imports:
 Depends:
     R (>= 3.5)
 Collate: 'kegg.functions.R' 'pathnet.functions.R'
-         'psf.functions.R' 'psf.opossom.R' 'psf.structures.node-class.R'
-         'psf.structures.edge-class.R'
-         'psf.structures.node-getValue-method.R' 'scriptlog.R'
+         'psf.functions.R'
          'psf.report.sheets.R'
          'psf.graph.functions.R' 'run_interactive_app.R' 
          'kegg_graphics_functions.R' 'psf_calculation_and_coloring.R' 'psf_report_generator.R' 'fast_psf_functions.R'
