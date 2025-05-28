@@ -32,12 +32,22 @@ kegg_data_downloader <- function(pathway_name, collection_name) {
   
   kgml_path <- tempfile()
   
-  download.file(kgml, destfile = kgml_path, method = "auto")
+  
+  if(grepl("windows", Sys.info()["sysname"], ignore.case = T)) {
+    download.file(kgml, destfile = kgml_path, method = "wininet", mode = "wb")
+  } else {
+    download.file(kgml, destfile = kgml_path, method = "auto")
+  }
+  
   
   # image_path <- tempfile()
   image_path <- paste0("collection_dir/", collection_name, "/pathway_images/", pathway_id, ".png")
   
-  download.file(image, destfile = image_path, method = "auto")
+  if(grepl("windows", Sys.info()["sysname"], ignore.case = T)) {
+    download.file(kgml, destfile = kgml_path, method = "wininet", mode = "wb")
+  } else {
+    download.file(image, destfile = image_path, method = "auto")
+  }
   
   img <- magick::image_read(image_path)
   

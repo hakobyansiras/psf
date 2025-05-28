@@ -47,7 +47,7 @@ load(system.file("extdata", "kegg_curated_40_signalings.RData", package="psf"))
 melanoma_fc <- (melanoma_deseq_normalized_counts + 1) / rowMeans(melanoma_deseq_normalized_counts)
 
 # Run PSF analysis on 40 pathways for all samples
-melanoma_psf <- run_psf(entrez.fc = melanoma_fc, kegg.collection = edited_pathways_new, 
+melanoma_psf <- run_psf(entrez.fc = melanoma_fc, kegg.collection = kegg_curated_40_signalings, 
                         calculate.significance = FALSE, ncores = 4)
 
 # Plot KEGG image-based PI3K-Akt signaling pathway with color-coded nodes
