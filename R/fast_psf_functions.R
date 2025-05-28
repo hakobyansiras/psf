@@ -955,7 +955,7 @@ plot_pathway <- function(pathway, plot_type = "visnet", plot_layout = NULL,
             geom_jitter(color = sink_signals$dot_color, width = 0.2) +
             guides(fill=FALSE) +
             coord_flip() +
-            facet_wrap(~sample_group, scale="fixed", ncol = length(unique(sink_signals$sample_group))) +
+            facet_wrap(~sample_group, scales="fixed", ncol = length(unique(sink_signals$sample_group))) +
             theme_bw()
         }
         
