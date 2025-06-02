@@ -65,12 +65,12 @@ generate_psf_report(psf_list = melanoma_psf, folder_name = "example_psf_report",
 > **Important:** Due to installation issues with the `Seurat` package, it is included in `Suggests` rather than `Imports`. The PSF package will still install even if `Seurat` fails to install. However, you must manually install `Seurat` to perform spatial transcriptomic analyses.
 
 ```r
-# Load the spatial dataset
+# Load the spatial dataset. The human melanoma dataset can be downloaded from the following link: https://www.10xgenomics.com/datasets/human-melanoma-if-stained-ffpe-2-standard. To import the data into Seurat, please download the Feature / barcode matrix HDF5 (filtered) and the Spatial imaging data files.
 spatial_melanoma <- Load10X_Spatial("/path/to/spatial_dataset", 
                                     filename = "CytAssist_FFPE_Human_Skin_Melanoma_filtered_feature_bc_matrix.h5")
 
 # Load pre-downloaded gene symbol to Entrez ID conversion data
-load("gene_symbol_to_entrez.RData")
+system.file("extdata", "gene_symbol_to_entrez.RData", package="psf")
 
 # Load curated KEGG signaling pathways
 load(system.file("extdata", "kegg_curated_40_signalings.RData", package="psf"))
