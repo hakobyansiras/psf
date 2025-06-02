@@ -37,6 +37,8 @@ A detailed tutorial on pathway import, curation, and analysis is available [here
 ## **Running PSF on Bulk RNA-seq Data with 40 Curated KEGG Signaling Pathways**
 
 ```r
+library(psf)
+
 # Load melanoma DESeq2 normalized expression data (GSE112509)
 load(system.file("extdata", "melanoma_exp.RData", package="psf"))
 
@@ -99,6 +101,8 @@ The app includes a **dedicated Help tab** containing detailed instructions on ho
 ## **Running PSF on Telomere Maintenance Mechanism (TMM) Pathways**
 
 ```r
+library(psf)
+
 # Load melanoma DESeq2 normalized expression data
 load(system.file("extdata", "melanoma_exp.RData", package="psf"))
 
