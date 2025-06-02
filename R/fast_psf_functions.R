@@ -1802,6 +1802,7 @@ spatial_psf_analysis <- function(spatial_obj, pathway_collection, gene_symbol_to
   
   ### Pathway activity clustering
   spatial_psf_obj <- FindVariableFeatures(spatial_psf_obj)
+  LayerData(spatial_psf_obj,assay='Spatial',layer='data') <- spatial_psf_obj@assays$Spatial@layers$counts
   spatial_psf_obj <- ScaleData(spatial_psf_obj)
   spatial_psf_obj <- RunPCA(spatial_psf_obj, verbose = FALSE, approx=TRUE)
   spatial_psf_obj <- FindNeighbors(spatial_psf_obj, dims = 1:30)
@@ -1832,9 +1833,12 @@ spatial_psf_analysis <- function(spatial_obj, pathway_collection, gene_symbol_to
   
   names(ident_markers) <- idents
   
+  slice_coords <- GetTissueCoordinates(object = spatial_psf_obj, scale = "lowres")
+  colnames(slice_coords)[1:2] <- c("imagerow", "imagecol")
+  
   if(return_only_shiny_vars) {
     return(list(spatial_psf_collection = spatial_psf, psf_ident_markers = ident_markers, psf_mat = spatial_psf_mat, 
-                spatial_image = spatial_psf_obj@images$slice1@image, coords = GetTissueCoordinates(object = spatial_psf_obj, scale = "lowres"), 
+                spatial_image = spatial_psf_obj@images$slice1@image, coords = slice_coords, 
                 meta.data = spatial_psf_obj@meta.data))
   } else {
     return(list(spatial_obj = spatial_obj, spatial_psf_obj = spatial_psf_obj, spatial_psf_collection = spatial_psf,

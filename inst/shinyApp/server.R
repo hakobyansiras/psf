@@ -34,7 +34,7 @@ kegg_data_downloader <- function(pathway_name, collection_name) {
   
   
   if(grepl("windows", Sys.info()["sysname"], ignore.case = T)) {
-    download.file(kgml, destfile = kgml_path, method = "wininet", mode = "wb")
+    download.file(kgml, destfile = kgml_path, method = "curl", mode = "wb")
   } else {
     download.file(kgml, destfile = kgml_path, method = "auto")
   }
@@ -44,7 +44,7 @@ kegg_data_downloader <- function(pathway_name, collection_name) {
   image_path <- paste0("collection_dir/", collection_name, "/pathway_images/", pathway_id, ".png")
   
   if(grepl("windows", Sys.info()["sysname"], ignore.case = T)) {
-    download.file(kgml, destfile = kgml_path, method = "wininet", mode = "wb")
+    download.file(image, destfile = image_path, method = "curl", mode = "wb")
   } else {
     download.file(image, destfile = image_path, method = "auto")
   }

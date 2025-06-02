@@ -49,14 +49,15 @@ pathway_shiny_vis <- function(pathway, port = 3838) {
 #' }
 #' 
 #' @concept psf
+#' @import shiny
 #' @export
-run_psf_spatial_browser <- function(psf_saptial_results, port = 3838) {
+run_psf_spatial_browser <- function(psf_spatial_results, port = 3838) {
   
   if (!requireNamespace("Seurat", quietly = TRUE)) {
     stop("This function requires the 'Seurat'. Please install it using install.packages('Seurat').")
   }
   
-  shinyOptions(psf_saptial_results = psf_saptial_results)
+  shinyOptions(psf_spatial_results = psf_spatial_results)
   
   shiny::runApp(system.file('spatial_browser', package='psf'), port=port, launch.browser = TRUE)	
 }
