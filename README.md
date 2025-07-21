@@ -46,7 +46,7 @@ load(system.file("extdata", "melanoma_exp.RData", package="psf"))
 load(system.file("extdata", "kegg_curated_40_signalings.RData", package="psf"))
 
 # Calculate fold change (FC) values against the global mean
-melanoma_fc <- (melanoma_deseq_normalized_counts + 1) / rowMeans(melanoma_deseq_normalized_counts)
+melanoma_fc <- (melanoma_deseq_normalized_counts + 1) / rowMeans(melanoma_deseq_normalized_counts + 1)
 
 # Run PSF analysis on 40 pathways for all samples
 melanoma_psf <- run_psf(entrez.fc = melanoma_fc, kegg.collection = kegg_curated_40_signalings, 
@@ -110,7 +110,7 @@ load(system.file("extdata", "melanoma_exp.RData", package="psf"))
 load(system.file("extdata", "tmm_pathway.RData", package="psf"))
 
 # Calculate fold change (FC) values against the global mean
-melanoma_fc <- (melanoma_deseq_normalized_counts + 1) / rowMeans(melanoma_deseq_normalized_counts)
+melanoma_fc <- (melanoma_deseq_normalized_counts + 1) / rowMeans(melanoma_deseq_normalized_counts + 1)
 
 # Run PSF analysis on the TMM pathway for all samples
 psf_tmm_result_mel <- psf.from.env.entrez.fc(entrez.fc = melanoma_fc,
