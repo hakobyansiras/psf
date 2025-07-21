@@ -384,31 +384,31 @@ vis_extract <- function(vis_table, node_colors = NULL, higlight_node = NULL, cus
   return(list(node_table = node_table, edge_table = edge_table))
 }
 
-psf_saptial_results <- getShinyOption("psf_saptial_results")
+psf_spatial_results <- getShinyOption("psf_spatial_results")
 
-if("image" %in% names(psf_saptial_results$spatial_psf_collection[[1]]$attrs)) {
+if("image" %in% names(psf_spatial_results$spatial_psf_collection[[1]]$attrs)) {
   load(system.file("extdata", "kegg_sink_to_process.RData", package="psf"))
   sink_name_to_id <- setNames(object = rownames(kegg_sink_to_process), nm = paste0(kegg_sink_to_process$Pathway_name, "->", kegg_sink_to_process$Sink)) 
 } else {
-  sink_name_to_id <- unlist(lapply(names(psf_saptial_results$spatial_psf_collection), function(x) {
-    setNames(object = paste0(psf_saptial_results$spatial_psf_collection[[x]]$sink.nodes, "; ", x), 
-             nm = paste0(x, "->", unlist(graph::nodeData(psf_saptial_results$spatial_psf_collection[[x]]$graph, 
-                                                         psf_saptial_results$spatial_psf_collection[[x]]$sink.nodes, attr = "label")))
+  sink_name_to_id <- unlist(lapply(names(psf_spatial_results$spatial_psf_collection), function(x) {
+    setNames(object = paste0(psf_spatial_results$spatial_psf_collection[[x]]$sink.nodes, "; ", x), 
+             nm = paste0(x, "->", unlist(graph::nodeData(psf_spatial_results$spatial_psf_collection[[x]]$graph, 
+                                                         psf_spatial_results$spatial_psf_collection[[x]]$sink.nodes, attr = "label")))
     )
   }))
 }
 
 # Your existing code for data preparation
 # Extract the spatial image (stored as an array)
-spatial_image <- as.raster(psf_saptial_results$spatial_image)
+spatial_image <- as.raster(psf_spatial_results$spatial_image)
 
 # Extract the low-resolution coordinates using GetTissueCoordinates
-coords <- psf_saptial_results$coords # GetTissueCoordinates(object = psf_spatial$spatial_psf_obj, scale = "lowres")
+coords <- psf_spatial_results$coords # GetTissueCoordinates(object = psf_spatial$spatial_psf_obj, scale = "lowres")
 
 coords$imagerow <- nrow(spatial_image) - coords$imagerow
 
 # Create a data frame for plotting
-spot_groups <- psf_saptial_results$meta.data$seurat_clusters # psf_spatial$spatial_psf_obj@meta.data$seurat_clusters
+spot_groups <- psf_spatial_results$meta.data$seurat_clusters # psf_spatial$spatial_psf_obj@meta.data$seurat_clusters
 # Define cluster colors
 unique_clusters <- sort(unique(spot_groups))
 cluster_colors <- setNames(gg_color_hue(length(unique_clusters)), unique_clusters)
@@ -452,7 +452,7 @@ server <- function(input, output, session) {
   )
   
   updateSelectInput(session, "cluster", choices = c("all", as.character(unique_clusters)), selected = "all")
-  updateSelectizeInput(session, "selected_pathway", choices = names(psf_saptial_results$spatial_psf_collection), server = FALSE)
+  updateSelectizeInput(session, "selected_pathway", choices = names(psf_spatial_results$spatial_psf_collection), server = FALSE)
   
   #### rendering spatial plotly ####
   observe({
@@ -522,7 +522,7 @@ server <- function(input, output, session) {
     
     if(input$cluster != "all") {
       updateSelectizeInput(inputId = "selected_feature", 
-                           choices = c("", paste0(psf_saptial_results$psf_ident_markers[[input$cluster]]$Pathway_name, "->", psf_saptial_results$psf_ident_markers[[input$cluster]]$Sink)), 
+                           choices = c("", paste0(psf_spatial_results$psf_ident_markers[[input$cluster]]$Pathway_name, "->", psf_spatial_results$psf_ident_markers[[input$cluster]]$Sink)), 
                            selected = "", server = TRUE)
     } else {
       updateSelectizeInput(inputId = "selected_feature", 
@@ -584,9 +584,9 @@ server <- function(input, output, session) {
       v$vis_samples <- v$plotly_selection
     } else {
       if(input$cluster == "all") {
-        v$vis_samples <- rownames(psf_saptial_results$meta.data)
+        v$vis_samples <- rownames(psf_spatial_results$meta.data)
       } else {
-        v$vis_samples <- rownames(psf_saptial_results$meta.data)[which(as.character(psf_saptial_results$meta.data$seurat_clusters) == input$cluster)]
+        v$vis_samples <- rownames(psf_spatial_results$meta.data)[which(as.character(psf_spatial_results$meta.data$seurat_clusters) == input$cluster)]
       }
     }
     
@@ -607,7 +607,7 @@ server <- function(input, output, session) {
   
   observeEvent(v$selected_feature, {
     if(input$cluster != "all" & v$selected_feature != "") {
-      metdata_text <- psf_saptial_results$psf_ident_markers[[input$cluster]][gsub("_", "-", sink_name_to_id[v$selected_feature]),c("avg_log2FC", "p_val_adj", "Process", "Dowstream_pathway")]
+      metdata_text <- psf_spatial_results$psf_ident_markers[[input$cluster]][gsub("_", "-", sink_name_to_id[v$selected_feature]),c("avg_log2FC", "p_val_adj", "Process", "Dowstream_pathway")]
       
       v$feature_metdata <- paste0(
         paste("<font color=\"#000000\"><b>",
@@ -632,7 +632,7 @@ server <- function(input, output, session) {
   
   #### colored featureplot data generator ####
   observeEvent(v$highlight_feature_id, {
-    feature_values <- log(psf_saptial_results$spatial_psf_collection[[v$pathway_name]][["psf_activities"]][v$highlight_feature_id,])
+    feature_values <- log(psf_spatial_results$spatial_psf_collection[[v$pathway_name]][["psf_activities"]][v$highlight_feature_id,])
     
     plotting_data <- data.frame(coords, spot_groups = spot_groups)
     plotting_data$ColorCode <- map_colors(values = feature_values, colors = Seurat:::SpatialColors(n = 100)) # Seurat:::SpatialColors(n = 100)[cut(feature_values, breaks = 100, labels = FALSE)]
@@ -645,7 +645,7 @@ server <- function(input, output, session) {
   observeEvent(c(v$pathway_name, v$vis_samples, v$highlight_feature_id, v$value_type, input$node_coloring_type), {
     if(!is.null(v$pathway_name)) {
       if(v$pathway_name != "") {
-        clust_pathway <- psf_subset(psf_collection = psf_saptial_results$spatial_psf_collection, 
+        clust_pathway <- psf_subset(psf_collection = psf_spatial_results$spatial_psf_collection, 
                                     pathway_name = v$pathway_name, 
                                     sample_list = v$vis_samples)
         
@@ -740,7 +740,7 @@ server <- function(input, output, session) {
       
       plotting_data <- data.frame(coords, spot_groups = spot_groups)
       
-      feature_values <- log(psf_saptial_results$spatial_psf_collection[[v$pathway_name]][[c("psf_activities", "exp_fc")[as.integer(input$node_coloring_type)]]][v$selected_node_name$node_id,])
+      feature_values <- log(psf_spatial_results$spatial_psf_collection[[v$pathway_name]][[c("psf_activities", "exp_fc")[as.integer(input$node_coloring_type)]]][v$selected_node_name$node_id,])
       
       plotting_data$ColorCode <-  map_colors(values = feature_values, colors = Seurat:::SpatialColors(n = 100)) # Seurat:::SpatialColors(n = 100)[cut(feature_values, breaks = 100, labels = FALSE)]
       plotting_data$Opacity <- 1

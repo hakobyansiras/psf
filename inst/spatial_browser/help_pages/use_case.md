@@ -69,7 +69,7 @@ psf_spatial <- spatial_psf_analysis(spatial_obj = spatial_melanoma, pathway_coll
 Launch the PSF Spatial Browser application:
 
 ``` r
-run_psf_spatial_browser(psf_saptial_results = psf_spatial)
+run_psf_spatial_browser(psf_spatial_results = psf_spatial)
 ```
 
 ## Step 5: Explore the Results
