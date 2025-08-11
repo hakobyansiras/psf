@@ -19,62 +19,58 @@ navbar:
       href: https://github.com/hakobyansiras/PSFC
 
 reference:
-  - title: Getting started
+  - title: Pathway curation (Shiny)
     contents:
       - run_shiny_app
       - pathway_shiny_vis
-      - run_psf_spatial_browser
-  - title: KEGG data import and processing
-    contents:
+      - generate.kegg.collection
+      - generate.kegg.collection.from.kgml
       - download.KGML
       - parse.KGML
       - get.pathway.attrs
-      - generate.kegg.collection
-      - generate.kegg.collection.from.kgml
-  - title: PSF computation
+  - title: Analysis (Shiny and R)
     contents:
       - run_psf
       - psf.from.env.entrez.fc
-      - process.psf.results
-      - calc_node_partial_influences
-      - run_pi
+      - set.edge.impacts
       - determine.sink.nodes
       - determine.input.nodes
       - order.nodes
-      - set.edge.impacts
-  - title: Visualization and reporting
-    contents:
+      - map.gene.data
       - plot_pathway
       - plot_kegg_image_pathway
       - plot_tmm_pathway
+  - title: Reporting
+    contents:
       - generate_psf_report
       - calc_psf_and_generate_report_from_collection
-      - interactive_spatial_plot
-  - title: Graph utilities
+  - title: Utilities (partial influence and graph)
     contents:
+      - run_pi
+      - calc_node_partial_influences
+      - graphnel_to_df
+      - df_to_graphnel
+      - edge_data_frame_from_graph
+      - update_edge_weights
+      - correctEdgeDirections
+      - isReverseDirection
       - out.edges
       - edge.exists
       - get.edge.type
-      - correctEdgeDirections
-      - isReverseDirection
-      - remove.disconnected.nodes
       - process.compounds
       - process.groupNode
       - redirectEdge
       - reverseEdge
+      - remove.disconnected.nodes
       - add.kegg.edge
       - add.kegg.edge.mut
       - addEdgeSafe
-      - update_edge_weights
-      - edge_data_frame_from_graph
-  - title: Data conversion
-    contents:
-      - graphnel_to_df
-      - df_to_graphnel
-      - map.gene.data
-  - title: Spatial analysis
+  - title: Use cases (Spatial and TMM)
     contents:
       - spatial_psf_analysis
+      - run_psf_spatial_browser
+      - interactive_spatial_plot
+      - plot_tmm_pathway
 
 articles:
   - title: Articles
