@@ -5,7 +5,7 @@ template:
 # site_url: https://hakobyansiras.github.io/PSFC
 
 home:
-  title: PSF: Pathway Signal Flow Calculator
+  title: "PSF: Pathway Signal Flow Calculator"
   sidebar:
     structure: [links, license]
 
@@ -16,7 +16,7 @@ navbar:
   components:
     github:
       icon: fa-github
-      href: https://github.com/hakobyansiras/PSFC
+      href: "https://github.com/hakobyansiras/PSFC"
 
 reference:
   - title: Pathway curation (Shiny)
