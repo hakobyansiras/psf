@@ -1,6 +1,6 @@
 ---
 title: "PSF toolkit: Getting Started"
-author: "PSF Authors"
+author: "Siras Hakobyan"
 date: "`r Sys.Date()`"
 output: rmarkdown::html_vignette
 vignette: >
