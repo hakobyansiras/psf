@@ -1,1 +1,5 @@
 ^\.github$
+# pkgdown site and config
+^_pkgdown\.yml$
+^pkgdown$
+^docs$

@@ -6,6 +6,9 @@
 
 The **PSF Toolkit** is an R package developed for **topology-aware (TA) pathway analysis** of various types of omics data. The package includes interactive modules for **pathway editing** and **visualization**, facilitating pathway curation and results interpretation.
 
+- Website: https://hakobyansiras.github.io/PSFC
+- Get started: see the Articles tab on the website.
+
 ## Installation
 
 ```r
@@ -32,7 +35,20 @@ library(psf)
 run_shiny_app()
 ```
 
-A detailed tutorial on pathway import, curation, and analysis is available [here](#).
+A detailed tutorial on pathway import, curation, and analysis is available on the website.
+
+## Build documentation site locally
+
+```r
+# Install development dependencies
+install.packages(c("roxygen2", "pkgdown"), repos = "https://cloud.r-project.org")
+
+# Generate Rd files (optional, already present)
+roxygen2::roxygenise()
+
+# Build site into docs/
+pkgdown::build_site()
+```
 
 ## **Running PSF on Bulk RNA-seq Data with 40 Curated KEGG Signaling Pathways**
 
