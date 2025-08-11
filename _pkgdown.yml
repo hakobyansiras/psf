@@ -1,0 +1,90 @@
+template:
+  bootstrap: 5
+
+# Optional: set your site URL if using GitHub Pages
+# site_url: https://hakobyansiras.github.io/PSFC
+
+home:
+  title: PSF: Pathway Signal Flow Calculator
+  sidebar:
+    structure: [links, license]
+
+navbar:
+  structure:
+    left: [reference, articles]
+    right: [github]
+  components:
+    github:
+      icon: fa-github
+      href: https://github.com/hakobyansiras/PSFC
+
+reference:
+  - title: Getting started
+    contents:
+      - run_shiny_app
+      - pathway_shiny_vis
+      - run_psf_spatial_browser
+  - title: KEGG data import and processing
+    contents:
+      - download.KGML
+      - parse.KGML
+      - get.pathway.attrs
+      - generate.kegg.collection
+      - generate.kegg.collection.from.kgml
+  - title: PSF computation
+    contents:
+      - run_psf
+      - psf.from.env.entrez.fc
+      - process.psf.results
+      - calc_node_partial_influences
+      - run_pi
+      - determine.sink.nodes
+      - determine.input.nodes
+      - order.nodes
+      - set.edge.impacts
+  - title: Visualization and reporting
+    contents:
+      - plot_pathway
+      - plot_kegg_image_pathway
+      - plot_tmm_pathway
+      - generate_psf_report
+      - calc_psf_and_generate_report_from_collection
+      - interactive_spatial_plot
+  - title: Graph utilities
+    contents:
+      - out.edges
+      - edge.exists
+      - get.edge.type
+      - correctEdgeDirections
+      - isReverseDirection
+      - remove.disconnected.nodes
+      - process.compounds
+      - process.groupNode
+      - redirectEdge
+      - reverseEdge
+      - add.kegg.edge
+      - add.kegg.edge.mut
+      - addEdgeSafe
+      - update_edge_weights
+      - edge_data_frame_from_graph
+  - title: Data conversion
+    contents:
+      - graphnel_to_df
+      - df_to_graphnel
+      - map.gene.data
+  - title: Spatial analysis
+    contents:
+      - spatial_psf_analysis
+
+articles:
+  - title: Articles
+    navbar: ~
+    contents:
+      - Intro_to_psf
+
+deploy:
+  install_metadata: true
+
+build:
+  # Avoid executing examples during reference build to minimize heavy deps
+  args: [--no-manual]
