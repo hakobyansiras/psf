@@ -1,5 +1,8 @@
 ^\.github$
+^.*\.Rproj$
+^\.Rproj\.user$
 # pkgdown site and config
 ^_pkgdown\.yml$
 ^pkgdown$
 ^docs$
+
