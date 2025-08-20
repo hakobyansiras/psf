@@ -207,6 +207,7 @@ psf.from.env.to.table <- function(env){
 #' Processs psf results output and calculates pvalues and some statitics
 #' @param psf.results psf results output list
 #' @export
+#' @keywords internal
 process.psf.results <- function(psf.results){
   for(i in 1:length(psf.results)){
     if(length(psf.results[[i]]$signal.at.sink)>0){

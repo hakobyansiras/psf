@@ -32,3 +32,4 @@ eval_formulas(
 \description{
 Calculates PSF formulas for each node in graphNEL object.
 }
+\keyword{internal}
