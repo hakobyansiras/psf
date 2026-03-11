@@ -6,7 +6,7 @@
 
 The **PSF Toolkit** is an R package developed for **topology-aware (TA) pathway analysis** of various types of omics data. The package includes interactive modules for **pathway editing** and **visualization**, facilitating pathway curation and results interpretation.
 
-- Website: https://hakobyansiras.github.io/PSFC
+- Website: https://hakobyansiras.github.io/psf
 - Get started: see the Articles tab on the website.
 
 ## Installation

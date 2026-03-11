@@ -2,7 +2,7 @@ template:
   bootstrap: 5
 
 # Optional: set your site URL if using GitHub Pages
-# site_url: https://hakobyansiras.github.io/PSFC
+site_url: https://hakobyansiras.github.io/psf
 
 home:
   title: "PSF: Pathway Signal Flow Calculator"
@@ -16,7 +16,7 @@ navbar:
   components:
     github:
       icon: fa-github
-      href: "https://github.com/hakobyansiras/PSFC"
+      href: "https://github.com/hakobyansiras/psf"
 
 reference:
   - title: Pathway curation (Shiny)

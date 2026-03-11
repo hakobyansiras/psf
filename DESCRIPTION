@@ -48,7 +48,7 @@ Suggests:
     dplyr,
     miniUI,
     colorspace,
-URL: https://github.com/hakobyansiras/PSFC
+URL: https://github.com/hakobyansiras/psf
 VignetteBuilder: knitr
 RoxygenNote: 7.2.3
 Roxygen: list(markdown = TRUE)
