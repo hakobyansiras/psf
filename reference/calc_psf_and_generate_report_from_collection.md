@@ -1,0 +1,56 @@
+# Calculates psf for given kegg pathway based on expression matrix and generates pdf report with colored pathways and plots
+
+Calculates psf for given kegg pathway based on expression matrix and
+generates pdf report with colored pathways and plots
+
+## Usage
+
+``` r
+calc_psf_and_generate_report_from_collection(
+  kegg_collection,
+  exp_matrix,
+  folder_name,
+  calculate_significance = FALSE,
+  use_old_images = F,
+  coldata = NULL,
+  adj = c(0.48, 1)
+)
+```
+
+## Arguments
+
+- kegg_collection:
+
+  list of kegg pathways
+
+- exp_matrix:
+
+  expression fold change matrix with gene entrez id rownames
+
+- folder_name:
+
+  name of the folder where pdf report(s) will be generated
+
+- calculate_significance:
+
+  logical, if true then psf function will also calculate significance
+  for the PSF values by shuffling all the network nodes and checking if
+  the resulted PSF values were calculated by chance. When set to true
+  volcano plot will be generetaed in pdf report.
+
+- use_old_images:
+
+  use olde kegg images(for use with curated pathway collection)
+
+- coldata:
+
+  table of sample information where first column of the table
+  corresponds to colnames of exp_matrix and the second column is a group
+  information.
+
+- adj:
+
+  two values in between 0 and 1 which specify the x and y adjustment of
+  the node labels, with 0 for left/bottom, 1 for right/top, and 0.5 for
+  centered. Default value is c(0.48, 1). On most devices values outside
+  0 and 1 will also work.
