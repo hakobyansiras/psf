@@ -1,0 +1,106 @@
+# Plots the pathway with colored nodes and labels
+
+Plots the pathway with colored nodes and labels
+
+## Usage
+
+``` r
+plot_pathway(
+  pathway,
+  plot_type = "visnet",
+  plot_layout = NULL,
+  color_nodes = NULL,
+  multi_color_nodes = FALSE,
+  sample_id = "mean",
+  col_data = NULL,
+  log_norm = T,
+  highlight_nodes = NULL,
+  highlight_color = "red",
+  plot_sink_values = F,
+  y_adj_text = 0,
+  y_adj_sink = 0,
+  use_old_images = F
+)
+```
+
+## Arguments
+
+- pathway:
+
+  pathway object.
+
+- plot_type:
+
+  network visualization type. Possible values c("kegg", "visnet"). When
+  "kegg" option is used the pathway will be plotted over kegg png image.
+  With "visnet" option, function will plot interactive network.
+
+- plot_layout:
+
+  layout type of the pathway. Only works in visnet plot_type. Default
+  value is NULL. Available values c("layout_nicely").
+
+- color_nodes:
+
+  type of node values to be visualized. When value type is specified
+  pathway nodes will be color coded with expression FC values or PSF
+  values and color legend will be added to the pathway plot. Possible
+  values are c(NULL, "psf_activities", "exp_fc"). Default value is NULL.
+
+- multi_color_nodes:
+
+  when set to true nodes of the pathway will be colored with multiple
+  colors based on the provided sample vector or groups (maximum number
+  is 4). Available only for the kegg visualization.
+
+- sample_id:
+
+  name or character vector of the samples which will be used to
+  visualize psf or exp fc values on pathway. To get averaged values
+  across all samples, set value to "mean". Default value is "mean".
+
+- col_data:
+
+  sample information for calculated PSF activities. A data.frame with
+  two columns, first column are sample ids (colnames of PSF activity
+  matrix), second column group names. Default value is NULL. When
+  data.frame with group information is provided plot_pathway will
+  generate boxplots of sink values for each group in the righ side of
+  the pathway.
+
+- log_norm:
+
+  log transform PSF and expression values before color mapping. Default
+  value is TRUE.
+
+- highlight_nodes:
+
+  single value of node id or a vector of ids to be highlighted in
+  plotted pathway. Default value is NULL.
+
+- highlight_color:
+
+  Highlighted nodes color(s). Default values is "red".
+
+- plot_sink_values:
+
+  If set to TRUE then pathway activity values of terminal (sink) nodes
+  will be plotted on the right side of the pathway (boxplots for
+  multiple samples, barplot for single sample). Default value is FALSE.
+
+- y_adj_text:
+
+  Numeric value to adjust Y position of node labels. Depending on R
+  version this value should be adjusted to have accurate text alignment.
+  Default value is 0.
+
+- y_adj_sink:
+
+  Numeric value to adjust Y position of sink node sign labels. Depending
+  on R version this value should be adjusted to have accurate alignment.
+  Default value is 0.
+
+- use_old_images:
+
+  use old kegg images(for use with curated pathway collection). Default
+  value is FALSE.

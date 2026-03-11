@@ -1,0 +1,63 @@
+# Performs partial influence analysis which evaluates effect of each pathway node on specific node(s) of the pathway.
+
+Performs partial influence analysis which evaluates effect of each
+pathway node on specific node(s) of the pathway.
+
+## Usage
+
+``` r
+run_pi(
+  pathway,
+  influenced_node,
+  influence_direction = "any",
+  sample_id = "all",
+  node_combinations = 1,
+  get_influence_matrix = FALSE,
+  ncores = 1
+)
+```
+
+## Arguments
+
+- pathway:
+
+  Pathway object with calculated PSF activities with run_psf function.
+
+- influenced_node:
+
+  single id of node or vector of node ids based on which partial
+  influence will be calculated.
+
+- influence_direction:
+
+  in which direction node affects the signal of target node(s). Possible
+  values c("+", "-", "any"). Default value is "any".
+
+- sample_id:
+
+  sample id or vector of sample ids for which partial influence will be
+  calculated. Default value is "all".
+
+- node_combinations:
+
+  number of node combinations for partial influence analysis. Note:
+  number of PSF calculations increases by the exponent of combinations(N
+  nodes^combinations). Default value is 1.
+
+- get_influence_matrix:
+
+  When set to true influence matrix will be returned instead of
+  influential nodes. Each column in influence matrix represent the log
+  ratio of default and neutralized node(s) psf profile.
+
+- ncores:
+
+  integer, the number of CPUs to use for calculation. Default value is
+  1.
+
+## Value
+
+Returns list with 2 objects. "ordered_influence_nodes" matrix with
+ordered nodes based on their influence where each column correspond to
+one sample. "mean_influence_params" dataframe with mean influence
+parameters for each node (NULL when analysis performed for 1 sample).

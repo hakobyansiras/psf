@@ -1,0 +1,171 @@
+# PSF toolkit: Getting Started
+
+## Overview
+
+The PSF toolkit provides functions and interactive apps to calculate
+topology-aware pathway activity from expression fold-change data,
+visualize KEGG pathways, run partial influence analysis, and generate
+reports.
+
+This vignette demonstrates common workflows and usage of the main public
+APIs.
+
+## Installation
+
+``` r
+if (!require("remotes", quietly = TRUE)) install.packages("remotes")
+remotes::install_github("hakobyansiras/psf")
+```
+
+## Quick start
+
+``` r
+library(psf)
+
+# Load example expression matrix (Entrez IDs as rownames) and curated pathway collection
+load(system.file("extdata", "melanoma_exp.RData", package = "psf"))
+load(system.file("extdata", "kegg_curated_40_signalings.RData", package = "psf"))
+
+# Fold-change vs global mean
+melanoma_fc <- (melanoma_deseq_normalized_counts + 1) / rowMeans(melanoma_deseq_normalized_counts + 1)
+
+# Run PSF across all pathways and samples
+psf_list <- run_psf(entrez.fc = melanoma_fc,
+                    kegg.collection = kegg_curated_40_signalings,
+                    calculate.significance = FALSE,
+                    ncores = 1)
+
+# Visualize a pathway (image-based) with PSF coloring and sink plots
+plot_pathway(psf_list$PI3K_Akt_signaling_pathway,
+             plot_type = "kegg",
+             color_nodes = "psf_activities",
+             sample_id = "mean",
+             log_norm = TRUE,
+             plot_sink_values = TRUE,
+             use_old_images = TRUE)
+
+# Generate PDF reports per pathway
+generate_psf_report(psf_list = psf_list,
+                    folder_name = "example_psf_report",
+                    plot_type = "kegg",
+                    log_norm = TRUE,
+                    use_old_images = TRUE)
+```
+
+## Importing KEGG data
+
+- `download.KGML(id, dir)`: Download a KEGG KGML file for pathway `id`
+  to `dir`.
+- `parse.KGML(kgml)`: Parse the KGML into a `graphNEL`-based pathway.
+- `generate.kegg.collection(pathway.id.list, out.dir, sink.nodes = TRUE)`:
+  Download and parse a vector of KEGG IDs.
+- `generate.kegg.collection.from.kgml(kgml.files, sink.nodes = TRUE)`:
+  Parse a set of local KGML files.
+
+``` r
+ids <- c("hsa04151", "hsa04010")
+col <- generate.kegg.collection(ids, out.dir = tempdir(), sink.nodes = TRUE)
+length(col)
+```
+
+## PSF computation APIs
+
+- `run_psf(entrez.fc, kegg.collection, ...)`: Main engine. Returns a
+  list of pathway objects with PSF matrices and metadata.
+- `psf.from.env.entrez.fc(entrez.fc, kegg.collection, ...)`: Alternative
+  PSF runner with options for significance and mapping control.
+- `process.psf.results(psf.results)`: Add summary stats and p-values
+  when bootstrapping is used.
+- `calc_node_partial_influences(pathway, ...)` and
+  `run_pi(pathway, ...)`: Partial influence analysis to rank nodes by
+  effect on target sink(s).
+
+``` r
+# Partial influence for one sample, top drivers of specific sink
+pw <- psf_list$PI3K_Akt_signaling_pathway
+pi <- run_pi(pathway = pw,
+             influenced_node = pw$sink.nodes[1],
+             influence_direction = "any",
+             sample_id = "mean",
+             node_combinations = 1,
+             ncores = 1)
+head(pi$ordered_influence_nodes)
+```
+
+## Visualization
+
+- `plot_pathway(pathway, plot_type = c("kegg", "visnet"), ...)`:
+  Visualize KEGG image-based or interactive network with coloring by PSF
+  or FC.
+- `plot_kegg_image_pathway(pathway, ...)`: Lower-level KEGG image
+  drawer.
+- `plot_tmm_pathway(pathway, ...)`: Visualize the TMM pathway in a
+  network layout.
+
+``` r
+# Interactive network view with PSF coloring
+plot_pathway(psf_list$PI3K_Akt_signaling_pathway,
+             plot_type = "visnet",
+             color_nodes = "psf_activities",
+             sample_id = "mean")
+```
+
+## Reporting
+
+- `generate_psf_report(psf_list, folder_name, ...)`: Creates PDF reports
+  per pathway with KEGG panel and sink summaries.
+- `calc_psf_and_generate_report_from_collection(...)`: Convenience
+  function to compute PSF from a KEGG collection and produce PDFs.
+
+## Spatial transcriptomics workflow
+
+- `spatial_psf_analysis(spatial_obj, pathway_collection, gene_symbol_to_entrez, ...)`:
+  Runs PSF on spatial data and returns objects usable for the spatial
+  browser.
+- `run_psf_spatial_browser(psf_spatial_results)`: Launch Shiny browser
+  for spatial PSF.
+
+``` r
+library(Seurat)
+# Load a Seurat object and mapping
+# spatial_melanoma <- Load10X_Spatial("/path/to/data")
+load(system.file("extdata", "kegg_curated_40_signalings.RData", package="psf"))
+load(system.file("extdata", "gene_symbol_to_entrez.RData", package="psf"))
+
+# res <- spatial_psf_analysis(spatial_melanoma, kegg_curated_40_signalings, gene_symbol_to_entrez)
+# run_psf_spatial_browser(res)
+```
+
+## Shiny apps
+
+- `run_shiny_app(port = 3838)`: Main KEGG editor and visualization app.
+- `pathway_shiny_vis(pathway, port = 3838)`: Visualize a single pathway
+  interactively.
+
+``` r
+# Run main app
+run_shiny_app()
+```
+
+## Utilities and data conversion
+
+- `graphnel_to_df(pathway, extended = TRUE)`: Convert to node/edge data
+  frames.
+- `df_to_graphnel(node_table, edge_table)`: Build `graphNEL` from
+  tables.
+- `update_edge_weights(edge_weights, g)`: Replace edge weights in a
+  graph.
+
+``` r
+pw <- psf_list$PI3K_Akt_signaling_pathway
+dfs <- graphnel_to_df(pw, extended = TRUE)
+head(dfs$node_table)
+```
+
+## Tips
+
+- Provide FC matrices with no NAs or zeros.
+- Use `tmm_mode` and `tmm_update_mode` switches for TMM-specific
+  pathways.
+- For heavy computations, increase `ncores` and avoid
+  `calculate.significance = TRUE` unless required.
